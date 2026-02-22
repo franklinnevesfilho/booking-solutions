@@ -5,6 +5,7 @@ This repository contains an opinionated, production-oriented agentic workflow fo
 Based on:
 - https://gist.github.com/burkeholland/0e68481f96e94bbb98134fa6efd00436
 - https://github.com/simkeyur/vscode-agents
+- https://github.com/github/awesome-copilot
 
 ## Repository Layout
 

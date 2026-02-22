@@ -17,6 +17,8 @@ When reviewing code, reference these skills for comprehensive analysis:
 - **Database Optimization** (`skills/database-optimization/SKILL.md`): Query optimization, N+1 queries, indexing
 - **Frontend Architecture & Performance** (`skills/frontend-architecture/SKILL.md`): Performance issues, accessibility, Core Web Vitals
 - **Code Quality & Clean Code** (`skills/code-quality/SKILL.md`): Code review standards, SOLID principles, design patterns, identifying code smells and anti-patterns
+- **Frontend Design** (`skills/frontend-design/SKILL.md`): Aesthetic and UI/UX guidance for frontend components and pages — use when assessing visual quality or proposing UI changes.
+- **Web Design Reviewer** (`skills/web-design-reviewer/SKILL.md`): Use when performing automated visual inspections, screenshot-based reviews, or responsive/accessibility checks that require page traversal and screenshots.
 
 ## Review Priorities (in order)
 
