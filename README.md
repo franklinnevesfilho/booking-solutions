@@ -1,9 +1,11 @@
 # Copilot Agentic Workflow
+
 Backend, Frontend, TypeScript, JavaScript
 
 This repository contains an opinionated, production-oriented agentic workflow for GitHub Copilot / VS Code Agents.
 
 Based on:
+
 - https://gist.github.com/burkeholland/0e68481f96e94bbb98134fa6efd00436
 - https://github.com/simkeyur/vscode-agents
 - https://github.com/github/awesome-copilot
@@ -22,6 +24,7 @@ Based on:
 ## Agent Contracts
 
 ### Orchestrator
+
 - Owns the end-to-end workflow and delegation.
 - Must not implement code directly.
 - Must start with Planner clarification gate.
@@ -30,6 +33,7 @@ Based on:
 - Must invoke Debugger only for concrete reproducible failures.
 
 ### Planner
+
 - Dual role: clarification gate (Phase A) and planning (Phase B).
 - Must not produce a plan until clarification is complete.
 - Clarification completion signal: `Clarification complete. Proceeding to planning.`
@@ -37,26 +41,31 @@ Based on:
 - Must not write code.
 
 ### CoderJr
+
 - Handles straightforward tasks: small fixes, simple features, minor updates, basic tests.
 - Must keep changes minimal and follow existing patterns.
 - Should be first coding choice for low-complexity tasks.
 
 ### CoderSr
+
 - Handles moderate/complex tasks, architecture-sensitive work, security/performance-critical work.
 - Receives escalations from CoderJr and must continue from current state (no restart).
 - Enforces stronger architectural and quality discipline.
 
 ### Designer
+
 - Handles UI/UX, accessibility, visual hierarchy, and presentation-layer improvements.
 - Must not change business logic or system behavior outside UI scope.
 - Must report assumptions and accessibility notes in final output.
 
 ### Reviewer
+
 - Performs bug/security/performance/quality review before completion.
 - Must prioritize findings by severity and provide actionable, file-specific feedback.
 - Must not implement fixes directly.
 
 ### Debugger
+
 - Activated only for confirmed reproducible failures.
 - Must follow reproduce -> root cause -> minimal fix -> verification flow.
 - Returns control to Orchestrator/Reviewer after fix verification.
@@ -89,12 +98,18 @@ flowchart TD
     HP -- "No" --> P1["Planner: Implementation Plan"]
     HP -- "Yes" --> PH["Parse Into Phases"]
     P1 --> PH["Parse Into Phases"]
-    PH --> EX["Execute Phases via CoderJr/CoderSr/Designer"]
+    PH --> WT{"Overlapping files in parallel tasks?"}
+    WT -- "Yes" --> WTC["Create Git Worktrees"]
+    WTC --> EX["Execute Phases via CoderJr/CoderSr/Designer"]
+    WT -- "No" --> EX
     EX --> RV["Reviewer"]
     RV --> F{"Concrete reproducible failure?"}
     F -- "Yes" --> DB["Debugger"]
     DB --> RV
-    F -- "No" --> DONE["Final Report to User"]
+    F -- "No" --> WTM{"Worktrees active?"}
+    WTM -- "Yes" --> MRG["Merge & Cleanup Worktrees"]
+    MRG --> DONE["Final Report to User"]
+    WTM -- "No" --> DONE
 ```
 
 ## Escalation Rules
@@ -115,6 +130,17 @@ flowchart TD
 - Run tasks in parallel only when files do not overlap and there are no data dependencies.
 - Run tasks sequentially when file overlap or dependency exists.
 - Orchestrator must assign explicit file ownership in delegation prompts.
+- When parallel tasks MUST modify overlapping files as independent features, use git worktree (see below).
+
+## Git Worktree Strategy
+
+- Worktrees are used **conditionally** — only when standard file-ownership parallelization is insufficient.
+- **Use when**: parallel tasks must modify overlapping files; Debugger needs isolated reproduction; high-risk refactoring needs rollback safety.
+- **Do NOT use when**: tasks touch non-overlapping files; work is sequential; simple single-feature changes.
+- Orchestrator owns worktree lifecycle: create → delegate → merge → cleanup.
+- Agents work within worktrees but NEVER create or remove them.
+- Every worktree MUST be cleaned up after merge.
+- See `skills/git-worktree/SKILL.md` for detailed guidance.
 
 ## Review and Debug Control
 
@@ -142,6 +168,7 @@ flowchart TD
   - Data transformation and ETL
   - Database optimization
   - Frontend architecture and performance
+  - Git worktree (conditional parallel execution)
   - Security best practices
   - Testing and QA
   - TypeScript patterns

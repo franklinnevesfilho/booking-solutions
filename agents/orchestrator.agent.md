@@ -2,7 +2,12 @@
 name: Orchestrator
 description: Sonnet, Codex, Gemini
 model: Claude Sonnet 4.6 (copilot)
-tools: ['read/readFile', 'agent', 'memory']
+tools: 
+  [
+    read/readFile, 
+    agent, 
+    memory
+  ]
 ---
 
 <!-- Note: Memory is experimental at the moment. You'll need to be in VS Code Insiders and toggle on memory in settings -->
@@ -140,6 +145,70 @@ Designer B: "Design the sidebar" -> Sidebar.tsx, SidebarItem.tsx
 If you find yourself assigning overlapping scope, that's a signal to make it sequential:
 - "Update the main layout" + "Add the navigation" (both might touch Layout.tsx)
 - Phase 1: "Update the main layout" -> Phase 2: "Add navigation to the updated layout"
+
+## Git Worktree Strategy (Conditional)
+
+Git worktree creates isolated working trees on separate branches. Use it ONLY when standard file-ownership parallelization is insufficient.
+
+**Reference skill:** `../skills/git-worktree/SKILL.md`
+
+### Decision Criteria
+
+**USE worktree when ALL of the following are true:**
+
+1. Parallel tasks MUST modify overlapping files (same file, different features)
+2. The tasks are logically independent (no data dependency)
+3. Sequential execution would cause significant delay
+4. Standard file-ownership split is not possible
+
+**ALSO USE worktree when:**
+
+- Debugger needs an isolated environment to reproduce a bug without disturbing in-progress work
+- A high-risk refactoring needs rollback safety (discard worktree if it fails)
+
+**DO NOT USE worktree when:**
+
+- Tasks touch non-overlapping files (standard file-ownership is sufficient)
+- Work is sequential by nature
+- The request is a single-feature, single-branch change
+- Simple bug fixes or minor updates
+
+### Worktree Lifecycle (Orchestrator-Owned)
+
+Orchestrator is the SOLE owner of worktree lifecycle. Agents work within worktrees but NEVER create or remove them.
+
+1. **Create**: Orchestrator creates worktree with descriptive branch
+   - Path: `../<project>-wt-<purpose>`
+   - Branch: `wt/<purpose>`
+2. **Delegate**: Orchestrator assigns agent to work in the worktree directory
+3. **Commit**: Agent commits all changes before returning control
+4. **Review**: Reviewer audits changes in the worktree
+5. **Merge**: Orchestrator merges worktree branch into target branch
+6. **Cleanup**: Orchestrator removes worktree AND deletes worktree branch
+
+> CRITICAL: Every created worktree MUST be removed after merge. Dangling worktrees are not acceptable.
+
+### Worktree in Execution Plan
+
+When using worktrees, add worktree context to your execution plan:
+
+```
+## Execution Plan
+
+### Phase 1: [Name] (WORKTREE)
+- Worktree: ../<project>-wt-feature-auth (branch: wt/feature-auth)
+- Task 1.1: [description] -> CoderSr
+  Files: src/App.tsx, src/auth/AuthProvider.tsx
+
+### Phase 1: [Name] (WORKTREE, PARALLEL with above)
+- Worktree: ../<project>-wt-feature-dashboard (branch: wt/feature-dashboard)
+- Task 1.2: [description] -> CoderSr
+  Files: src/App.tsx, src/dashboard/Dashboard.tsx
+
+### Phase 2: Merge & Review (depends on Phase 1)
+- Merge worktrees sequentially, resolve conflicts
+- Run Reviewer on merged result
+```
 
 ## CRITICAL Rules
 
