@@ -1,6 +1,6 @@
 # Copilot Agentic Workflow
 
-Backend, Frontend, TypeScript, JavaScript
+Backend, Frontend, Mobile, TypeScript, Kotlin, Swift
 
 This repository contains an opinionated, production-oriented agentic workflow for GitHub Copilot / VS Code Agents.
 
@@ -9,6 +9,7 @@ Based on:
 - https://gist.github.com/burkeholland/0e68481f96e94bbb98134fa6efd00436
 - https://github.com/simkeyur/vscode-agents
 - https://github.com/github/awesome-copilot
+- https://github.com/AlexGladkov/claude-code-agents
 
 ## Repository Layout
 
@@ -189,7 +190,8 @@ flowchart TD
   - Multi-model review (consensus-based code review)
   - Security best practices
   - Testing and QA
-  - TypeScript patterns
+  - Full-stack patterns (TypeScript, Kotlin, Swift)
+  - Mobile architecture (Android/Compose, iOS/SwiftUI)
 
 ## Design Principles
 
