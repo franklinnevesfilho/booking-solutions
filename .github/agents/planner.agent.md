@@ -59,6 +59,13 @@ Delegation protocol for planning output:
 
 If analysis requires running commands (tests/lint/typecheck/audit), assign it to Auditors (Reviewer/ReviewerGPT/ReviewerGemini) and require: commands + raw outputs + interpretation.
 
+## Memory Policy Alignment (Read-First + Step 8 Gate)
+
+1. Always consult `.agent-memory/project_decisions.md` and `.agent-memory/error_patterns.md` early in Phase B and cite relevant entries.
+2. In the plan output, include a short `Memory Update` note:
+   - `Memory Update: REQUIRED` when the task is expected to trigger durable knowledge (new/changed decision, recurring pattern, >=2 files/refactor, new top risk with guardrail, or user asks to persist).
+   - `Memory Update: SKIP` when the task is mechanical/trivial and unlikely to add durable knowledge.
+
 ## Multi-Hive Decision Rule (Mandatory)
 
 Evaluate all 4 criteria:
@@ -94,6 +101,7 @@ If enabled, include:
 - Memory Citations
 - Ordered implementation steps (for each step: owner role, affected files/paths, dependency list)
 - Phase layout for Orchestrator (parallel groups vs sequential order)
+- Memory Update: `REQUIRED` or `SKIP` with 1-line rationale
 - Multi-Hive Decision:
   - Status: `ENABLED` or `DISABLED`
   - Criteria 1-4: true/false with brief rationale

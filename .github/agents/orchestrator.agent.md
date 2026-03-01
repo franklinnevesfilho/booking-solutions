@@ -49,6 +49,30 @@ For any audit/analysis request ("analyze project", "security review", "architect
 2. Coders (CoderJr/CoderSr) are for implementation only; do not assign them to produce analysis reports.
 3. If command execution is needed (tests/lint/typecheck/audit), run it via Reviewer/ReviewerGPT/ReviewerGemini (they can execute read-only checks but must not write code).
 
+## Memory Read/Write Policy (Balance)
+
+Goal: minimize repeated repo scanning across short sessions while avoiding memory noise.
+
+### Read-First (Default)
+
+Before planning, auditing, or implementing any non-trivial task:
+
+1. Read `.agent-memory/project_decisions.md` (latest relevant sections)
+2. Read `.agent-memory/error_patterns.md` (latest relevant sections)
+3. Read `.agent-memory/archive/*` only if needed to resolve contradictions or prior context
+
+### Write-When-Triggered (Step 8 Gate)
+
+Run Step 8 only when at least one trigger is true:
+
+1. New or changed architectural decision/invariant (module boundaries, API contracts, data models, workflow rules)
+2. New recurring bug/anti-pattern identified + fix/prevention guidance
+3. Implementation touched `>= 2` files or included non-trivial refactor
+4. Audit/review identified a new top risk (security/reliability/correctness) with a concrete recommended guardrail/fix
+5. User explicitly requests persisting the outcome to memory
+
+Skip Step 8 (no-op) when the task is purely mechanical, single-file trivial, or produces no durable knowledge.
+
 ### Step 0: Clarification Gate (Planner-owned)
 
 1. Call Planner first.
