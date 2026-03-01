@@ -17,6 +17,7 @@ For evaluating and interpreting findings, reference:
 - **Multi-Model Review** (`../skills/multi-model-review/SKILL.md`): Consensus scoring, consolidation methodology, conflict resolution, false positive triage
 - **Code Quality & Clean Code** (`../skills/code-quality/SKILL.md`): Code review standards, SOLID principles, design patterns
 - **Security Best Practices** (`../skills/security-best-practices/SKILL.md`): OWASP Top 10, secure coding, vulnerability detection
+- **Testing & QA** (`../skills/testing-qa/SKILL.md`): Regression risk and test-safety interpretation across findings
 
 ## What You Receive
 
@@ -27,6 +28,11 @@ The Orchestrator provides findings from 3 independent reviews:
 3. **Reviewer** findings (Claude Sonnet 4.6 perspective)
 
 Each set of findings uses the standardized format: BLOCKER / WARNING / SUGGESTION / POSITIVE.
+Expected input segment labels:
+
+- `=== ReviewerGPT ===`
+- `=== ReviewerGemini ===`
+- `=== Reviewer ===`
 
 ## Consolidation Process
 
@@ -133,3 +139,4 @@ When models disagree:
 6. **Be transparent** about disagreements — don't hide model conflicts
 7. **Preserve nuance** — don't collapse different observations into one if they're distinct
 8. **Final call is yours** — when models disagree, you make the judgment call
+9. **Input completeness is mandatory** — if any reviewer segment is missing, return `INCOMPLETE INPUT` and request full 3-model payload

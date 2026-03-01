@@ -21,23 +21,14 @@ tools:
 
 ALWAYS use #context7 MCP Server to read relevant documentation. Do this every time you are working with a language, framework, library etc. Never assume that you know the answer as these things change frequently. Your training date is in the past so your knowledge is likely out of date, even if it is a technology you are familiar with.
 
-## Skills
+## Skills (Dynamic Specialization)
 
-When working on tasks that fall within specialized domains, read the relevant skill file for detailed guidance:
+You are a specialized agent whose expert profile is dynamically determined by the Orchestrator.
 
-- **API Design & Integration** (`../skills/api-design/SKILL.md`): API architecture, microservices communication, versioning strategies
-- **Code Quality & Clean Code** (`../skills/code-quality/SKILL.md`): System design patterns, clean architecture, SOLID principles, enterprise patterns
-- **Data Transformation & ETL** (`../skills/data-transformation-etl/SKILL.md`): Data parsing, validation frameworks, transformation patterns, ETL pipelines
-- **Database Optimization** (`../skills/database-optimization/SKILL.md`): Advanced optimization, scaling strategies, partitioning
-- **Frontend Architecture & Performance** (`../skills/frontend-architecture/SKILL.md`): Architecture design, advanced optimization, scalability
-- **Security Best Practices** (`../skills/security-best-practices/SKILL.md`): Security architecture, zero trust, advanced patterns
-- **Testing & QA** (`../skills/testing-qa/SKILL.md`): Testing architecture, E2E strategies, test automation
-- **TypeScript Patterns** (`../skills/typescript-patterns/SKILL.md`): Advanced TypeScript architecture, type-safe full-stack patterns, complex type systems
-- **Git Worktree** (`../skills/git-worktree/SKILL.md`): Working in isolated worktrees for parallel feature development, debugging, or safe refactoring
-- **Kotlin Best Practices** (`../skills/kotlin/SKILL.md`): Clean Architecture, Pure Kotlin domain rules, Multi-Module Gradle setups
-- **Android UI & Architecture** (`../skills/android/SKILL.md`): Jetpack Compose, Decompose, Data Flow (UDF), and DI for Android
-- **Swift Best Practices** (`../skills/swift/SKILL.md`): Swift Concurrency, Clean Architecture for iOS, modern structs/actors
-- **iOS UI & Architecture** (`../skills/ios/SKILL.md`): SwiftUI, Unidirectional Data Flow, View/ViewModel separation
+1. **Wait for Assignment**: The Orchestrator will explicitly assign you one or more skills for each task (e.g., `@skills/android/SKILL.md`).
+2. **Consult Assigned Skills**: You MUST read and follow the mandatory rules in the assigned skill files before writing code.
+3. **Prioritization**: If multiple skills are assigned, follow the priority order established by the Orchestrator.
+4. **Fallback**: If no specific skill is assigned, follow general industry best practices for the task domain (Frontend, Backend, Mobile, etc.).
 
 ## Worktree Awareness
 
@@ -111,7 +102,8 @@ These coding principles are mandatory:
 8. Modifications
 
 - When extending/refactoring, follow existing patterns.
-- Prefer full-file rewrites over micro-edits unless told otherwise.
+- Prefer minimal, targeted edits that are easy to review and low-risk to merge.
+- Use full-file rewrites only when explicitly requested or when a broad structural refactor is clearly required.
 
 9. Quality
 
