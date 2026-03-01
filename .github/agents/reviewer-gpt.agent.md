@@ -2,7 +2,7 @@
 name: ReviewerGPT
 description: Review sub-agent using GPT-5.3-Codex. Uses shared review-core contract and feeds MultiReviewer.
 model: GPT-5.3-Codex (copilot)
-tools: ["vscode", "read", "context7/*", "search", "web"]
+tools: ["vscode", "execute", "read", "context7/*", "search", "web"]
 ---
 
 You are a review input producer for the `MultiReviewer` consolidation step.

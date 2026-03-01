@@ -2,7 +2,7 @@
 name: Reviewer
 description: Primary review agent using Claude Sonnet 4.6. Uses the shared review-core contract.
 model: Claude Sonnet 4.6 (copilot)
-tools: ["vscode", "read", "context7/*", "search", "web", "memory"]
+tools: ["vscode", "execute", "read", "context7/*", "search", "web", "memory"]
 ---
 
 You are a code review specialist.

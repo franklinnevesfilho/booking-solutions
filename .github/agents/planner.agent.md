@@ -57,6 +57,8 @@ Delegation protocol for planning output:
 - Never assign analysis/audit work to coders.
 - Every implementation step must declare: assigned agent role, affected files/paths, and dependency constraints.
 
+If analysis requires running commands (tests/lint/typecheck/audit), assign it to Auditors (Reviewer/ReviewerGPT/ReviewerGemini) and require: commands + raw outputs + interpretation.
+
 ## Multi-Hive Decision Rule (Mandatory)
 
 Evaluate all 4 criteria:
