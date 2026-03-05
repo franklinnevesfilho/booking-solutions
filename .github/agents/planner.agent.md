@@ -66,6 +66,8 @@ If analysis requires running commands (tests/lint/typecheck/audit), assign it to
    - `Memory Update: REQUIRED` when the task is expected to trigger any Step 8 trigger (decision/invariant, bug fix with repro, new feature/behavior change, >=2 files/refactor, new top risk + guardrail, new durable rule-of-thumb, CI gating change, dependency risk change, or user asks to persist).
    - `Memory Update: SKIP` when the task is mechanical/trivial and unlikely to add durable knowledge.
 
+Hard rule: if the user request is onboarding / project familiarization (e.g., "project overview", "analyze the repo/architecture"), set `Memory Update: REQUIRED` even if no code changes are planned.
+
 ## Multi-Hive Decision Rule (Mandatory)
 
 Evaluate all 4 criteria:

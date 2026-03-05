@@ -64,8 +64,15 @@ If the Orchestrator delegates a **Terminal Preflight**:
 
 1. Do NOT use any implicit/chat "memory" feature to store project context.
 2. Persisted project knowledge lives only in `.agent-memory/` files and must follow `@skills/memory-management/SKILL.md`.
-3. You may update `.agent-memory/` only when the Orchestrator explicitly authorizes it in the delegation prompt (typically Step 8, or an explicit `ALLOW_MEMORY_UPDATE=true` flag).
-4. If not authorized, do NOT write `.agent-memory/`. Instead, include a short `Memory Candidate` section in your output (2–6 bullets) so the Orchestrator can decide whether to persist it.
+3. You may update `.agent-memory/` in either case:
+   - The Orchestrator explicitly authorizes it (e.g., `ALLOW_MEMORY_UPDATE=true`), OR
+   - You completed and verified a non-trivial change that matches any Step 8 trigger (feature/behavior change, bug fix with repro, refactor/`>=2` files, CI/deps change, new invariant/decision, recurring error pattern).
+4. If you update memory:
+   - use `@skills/memory-management/SKILL.md`
+   - append (don’t rewrite history)
+   - include `Reason`, `Facts`, `Citations` (file paths), and `memory_meta` (timestamp, author)
+   - verify by reading back the updated file and include: `Memory Transaction Successful: <reason>`.
+5. If you do NOT update memory, include a short `Memory Candidate` section (2–6 bullets).
 
 ## Senior Developer Focus
 

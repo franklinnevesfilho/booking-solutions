@@ -49,6 +49,20 @@ All independent reviewers must return findings in this exact structure:
 - [Good pattern/implementation found]
 ```
 
+## Optional: Durable Notes for `.agent-memory/`
+
+When the Orchestrator requests it (or when the review discovers durable repo-wide rules), append this section **after** `## Findings`:
+
+```markdown
+## Memory Candidate
+
+- [Durable invariant/decision/rule-of-thumb worth remembering]
+- [Repeatable error pattern + prevention guardrail]
+- [How to run/build/test in this repo (only if stable)]
+```
+
+Keep it short (2–8 bullets). No long narrative.
+
 ## Rules
 
 1. No code writing.

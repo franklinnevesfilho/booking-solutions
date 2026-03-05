@@ -130,8 +130,29 @@ Run Step 8 only when at least one trigger is true:
 8. CI/build/test gating changed (new/changed checks, stricter rules, new required commands)
 9. Dependencies changed in a way that affects maintenance or risk (new dependency, major upgrade, security-driven pin)
 10. User explicitly requests persisting the outcome to memory
+11. User requests onboarding / project familiarization (e.g., "get familiar with this project", "analyze the repository", "give an architecture overview") even if no code changes are made
 
 Skip Step 8 (no-op) when the task is purely mechanical, single-file trivial, or produces no durable knowledge.
+
+### Enforcement (Make Memory Actually Happen)
+
+1. If Planner outputs `Memory Update: REQUIRED`, you MUST run Step 8 before declaring the task complete.
+2. If any executor returns a `Memory Candidate` section and it matches any Step 8 trigger, you MUST run Step 8.
+3. For any implementation task that is likely to match triggers #3–#9 (feature/bugfix, multi-file, CI/deps), explicitly require one of:
+   - a completed memory write (preferred when verified), or
+   - a `Memory Candidate` section (if not writing memory yet).
+4. When Step 8 is required, delegate it explicitly with:
+   - `ALLOW_MEMORY_UPDATE=true`
+   - target file(s): `.agent-memory/project_decisions.md` and/or `.agent-memory/error_patterns.md`
+   - `@skills/memory-management/SKILL.md`
+   - completion gate: executor must report `Memory Transaction Successful: <reason>` after read-back verification.
+
+5. On onboarding/familiarization requests (trigger #11), Step 8 must at minimum append an **Onboarding Snapshot** entry to `.agent-memory/project_decisions.md`:
+   - repo structure (major modules / packages)
+   - how to run / build / test (commands)
+   - key invariants + conventions (if any)
+   - top risks / TODOs worth remembering
+   Keep it concise and durable (no long narrative).
 
 ### Step 0: Clarification Gate (Planner-owned)
 
@@ -237,7 +258,7 @@ Verify integrated result and report in chat. Do not create documentation files u
 
 ### Step 8: Knowledge Extraction (Shared Memory)
 
-For complex tasks after verification:
+For tasks where any Step 8 trigger is true (or Planner says `Memory Update: REQUIRED`), after verification:
 
 1. Ask Planner or Reviewer to summarize new decisions/patterns.
 2. Delegate CoderJr to update `.agent-memory/project_decisions.md` and/or `.agent-memory/error_patterns.md` via `@skills/memory-management/SKILL.md`.
