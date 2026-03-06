@@ -1,7 +1,7 @@
 ---
 name: Planner
 description: Dual-phase Planner with mandatory clarification gate
-model: GPT-5.2 (copilot)
+model: GPT-5.4 (copilot)
 tools: ["vscode/askQuestions", "read", "search", "web", "context7/*"]
 ---
 
