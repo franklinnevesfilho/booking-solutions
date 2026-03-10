@@ -1,11 +1,12 @@
 ---
 name: swift
 description: Clean Architecture, concurrency, and patterns for pure Swift modules.
+user-invokable: false
 ---
 
-# 2026 Swift 6 Architecture Standards
+# Swift Architecture Standards
 
-This skill outlines the architectural rules and best practices for writing modern Swift code, adapted for Swift 6 Strict Concurrency and AI-assisted Apple ecosystem development.
+Use this skill for pure Swift modules where clean boundaries, concurrency, and testability matter.
 
 ## 1. Clean Architecture Rules (Domain Layer)
 
@@ -33,6 +34,5 @@ When writing Swift business logic (Domain/Core modules):
 - **Value Semantics**: Default to `struct` for models. Use `class` ONLY when reference semantics or Identity are strictly required.
 - **Serialization**: Use `Codable`.
 - **Error Handling Boundary**: Do NOT leak raw network or database `Error` types directly to the View. The `Result<T, Error>` from a UseCase must be mapped by the ViewModel/Reducer into specific, UI-friendly State enumerations or One-Time Events.
-- **Swift 6 Strict Concurrency**: All code must compile under Swift 6 Strict Concurrency checking. Use `@Sendable` closures and explicitly mark isolated boundaries.
-- **Error Handling Boundary**: Do NOT leak raw network or database `Error` types directly to the View. The `Result<T, Error>` from a UseCase must be mapped by the ViewModel/Reducer into specific, UI-friendly State enumerations or One-Time Events.
+- **Swift Strict Concurrency**: Code should be safe under strict concurrency checking. Use `@Sendable` closures and explicitly mark isolated boundaries.
 - **Closures**: Avoid strong reference cycles by explicitly using `[weak self]` in escaping closures. However, with `async`/`await`, prefer async functions over escaping closures to eliminate this risk entirely.

@@ -1,3 +1,9 @@
+---
+name: memory-management
+description: Durable project-memory rules for `.agent-memory/` plus session-memory boundaries.
+user-invokable: false
+---
+
 # Skill: Memory Management
 
 This skill defines the rules for interacting with the `.agent-memory/` directory. It ensures that the project's long-term "brain" remains consistent, clean, and useful.
@@ -13,16 +19,24 @@ This skill defines the rules for interacting with the `.agent-memory/` directory
 
 ---
 
-## 2. Durable vs Runtime Memory
+## 2. Durable vs Session Memory
 
 - Durable project knowledge belongs in `.agent-memory/`.
+- `vscode/memory` is session memory only. It may hold current-plan notes, transient routing hints, or short-lived user preferences.
+- Never treat `vscode/memory` as canonical project truth.
+- If a detail must survive across sessions or be shared with future agents, write it into `.agent-memory/`.
+
+---
+
+## 3. Durable vs Runtime Artifacts
+
 - Temporary execution notes, brainstorm pads, command scratchpads, and transient reports do NOT belong in `.agent-memory/`.
-- Put transient state in runtime files such as `/.tmp/`, task-local notes, or other execution artifacts.
+- Put transient state in runtime files such as `/.tmp/`, session memory, task-local notes, or other execution artifacts.
 - If a detail is only useful for the current run, keep it out of durable memory.
 
 ---
 
-## 3. Formatting Rules
+## 4. Formatting Rules
 
 ### Markdown Precision
 
@@ -39,7 +53,7 @@ This skill defines the rules for interacting with the `.agent-memory/` directory
 
 ---
 
-## 4. Entry Shapes
+## 5. Entry Shapes
 
 ### `project_decisions.md`
 
@@ -59,6 +73,13 @@ Prefer this shape for durable decisions:
 
 ### Consequences
 - What this changes, constrains, or requires going forward.
+
+### Citations
+- File paths that justify the decision.
+
+### memory_meta
+- timestamp: YYYY-MM-DD
+- author: <agent>
 ```
 
 ### Onboarding Snapshot
@@ -96,19 +117,27 @@ Prefer this shape for recurring issues:
 
 ### Prevention
 - Guardrail: test, lint, invariant, review rule, or coding constraint.
+
+### Citations
+- File paths or commands that support the pattern.
+
+### memory_meta
+- timestamp: YYYY-MM-DD
+- author: <agent>
 ```
 
 ---
 
-## 5. Conflict Resolution (Multi-Hive)
+## 6. Conflict Resolution (Multi-Hive)
 
 - In Multi-Hive mode, always work on the local branch copy.
 - If a merge conflict occurs in memory files, prioritize the most descriptive and recent information.
 - Use bullet points to list alternative approaches if consensus is not possible.
+- Use `/delegate` and background sessions for execution isolation, not as a substitute for durable memory writes.
 
 ---
 
-## 6. Memory Sync After Meaningful Changes
+## 7. Memory Sync After Meaningful Changes
 
 After any non-trivial feature, bugfix, refactor, onboarding scan, review-driven change, or CI/dependency update:
 
@@ -126,17 +155,17 @@ After any non-trivial feature, bugfix, refactor, onboarding scan, review-driven 
 
 ---
 
-## 7. Smart Garbage Collection (Archiving)
+## 8. Smart Garbage Collection (Archiving)
 
 - **Audit Trigger**: Perform a check when a memory file exceeds 500 lines.
 - **Archiving Logic**:
   - Move the oldest 20% of entries to `.agent-memory/archive/`.
   - Name archive files as `[filename]-YYYY-MM-DD.md`.
-  - Leave a "Tombstone" entry in the main file mentioning where the old data was moved.
+  - Leave a tombstone entry in the main file mentioning where the old data was moved.
 
 ---
 
-## 8. Drift Recovery
+## 9. Drift Recovery
 
 If `.agent-memory/` is stale, contradictory, or mostly wrong:
 
@@ -148,10 +177,10 @@ If `.agent-memory/` is stale, contradictory, or mostly wrong:
 
 ---
 
-## 9. Transaction Verification (Critical)
+## 10. Transaction Verification (Critical)
 
 After every write or modification to `.agent-memory/`:
 
 - **Read-Back**: You MUST read the file back to verify the entry was correctly appended/merged.
 - **Consistency Check**: Ensure the new entry doesn't contradict existing high-priority decisions.
-- **Success Report**: Explicitly state "Memory Transaction Successful: [Reason]" in your output. The Orchestrator relies on this to close the task.
+- **Success Report**: Explicitly state `Memory Transaction Successful: <reason>` in the output.

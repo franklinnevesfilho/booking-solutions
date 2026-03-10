@@ -2,6 +2,7 @@
 name: multi-model-review
 description: "Multi-Model Code Review: consensus-based analysis patterns, consolidation methodology, conflict resolution, and false positive triage."
 license: "See repository LICENSE"
+user-invokable: false
 ---
 
 # Multi-Model Code Review
@@ -114,13 +115,7 @@ Model B: ✅ POSITIVE — correctly excluded dependency (intentional)
 
 ### Pattern A: Breadth-Optimized Review
 
-Each model naturally focuses on different aspects due to training differences:
-
-- **GPT models** tend to catch: logic errors, edge cases, API misuse
-- **Gemini models** tend to catch: performance patterns, type safety, documentation gaps
-- **Claude models** tend to catch: security issues, architectural concerns, subtle bugs
-
-The combination provides broader coverage than any single model.
+Different review models often surface different classes of issues. Treat this as a source of broader coverage, not as a fixed stereotype or a guarantee about any specific model family.
 
 ### Pattern B: Adversarial Validation
 

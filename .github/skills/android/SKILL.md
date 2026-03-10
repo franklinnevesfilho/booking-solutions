@@ -1,11 +1,12 @@
 ---
 name: android
 description: Architecture, Jetpack Compose, Navigation3 KMP, and Koin DI rules for Android apps.
+user-invokable: false
 ---
 
-# 2026 Android & Compose Architecture Standards
+# Android & Compose Architecture Standards
 
-This skill defines the rules for building modern Android applications (Jetpack Compose, Navigation3, Koin) adhering to strict 2026 UDF patterns.
+Use this skill for Android work built with Kotlin, Compose, and related modern app architecture patterns.
 
 ## 1. Jetpack Compose UI Rules
 
@@ -18,7 +19,7 @@ This skill defines the rules for building modern Android applications (Jetpack C
    - `<Name>View(state, onEvent)`: A completely pure, stateless Composable.
 3. **Minimize Logic in Compose**:
    - Do NOT use `remember` for business logic. Business logic belongs in the ViewModel.
-4. **Performance (2026 Standards)**:
+4. **Performance**:
    - Assume **Strong Skipping Mode** is enabled. Do not manually wrap lambdas in `remember`.
    - Pass modifier chains explicitly: `modifier: Modifier = Modifier`.
 5. **Visibility**:

@@ -2,6 +2,7 @@
 name: git-worktree
 description: "Git Worktree: parallel working trees for isolated branch-level execution, debugging, and safe experimentation."
 license: "See repository LICENSE"
+user-invokable: false
 ---
 
 # Git Worktree
@@ -11,6 +12,8 @@ license: "See repository LICENSE"
 Git worktree allows attaching **multiple working trees** to a single repository. Each worktree operates on its own branch independently, enabling true parallel development without stashing, switching, or risking merge conflicts in the working directory.
 
 In the context of this multi-agent workflow, worktrees are used **conditionally** — only when the standard file-ownership parallelization strategy is insufficient.
+
+Use worktrees for **filesystem isolation** and `/delegate` for **session isolation**. They complement each other rather than replacing each other.
 
 ## When to Use This Skill
 
@@ -203,6 +206,15 @@ Worktree refactor: wt/refactor-api-v2 → CoderSr performs refactoring
 ```
 
 If refactoring passes review → merge. If it fails → simply remove the worktree, no damage done.
+
+### Pattern D: Worktree + `/delegate`
+
+When a task is both long-running and likely to overlap with ongoing work:
+
+1. Orchestrator creates the worktree first
+2. the delegated/background session works only inside that worktree
+3. durable outcomes are written back to `.agent-memory/` before the branch is closed
+4. main orchestration still owns merge and cleanup
 
 ---
 

@@ -1,11 +1,12 @@
 ---
 name: kotlin
 description: Clean Architecture, project structure, and patterns for pure Kotlin modules.
+user-invokable: false
 ---
 
-# 2026 Kotlin & KMP Architecture Standards
+# Kotlin & KMP Architecture Standards
 
-This skill outlines the architectural rules and best practices for writing modern Kotlin and KMP code, optimized for AI-assisted development (explicit typing, clean boundaries).
+Use this skill for pure Kotlin or Kotlin Multiplatform modules where clean boundaries and testable async code matter.
 
 ## 1. Clean Architecture Rules (Domain Layer)
 

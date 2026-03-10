@@ -1,216 +1,109 @@
 ---
 name: testing-qa
-description: "Testing & QA: comprehensive guidance for unit, integration, and end-to-end testing, TDD, mocking, and testing infrastructure."
+description: Practical testing rules for unit, integration, and end-to-end verification.
 license: "See repository LICENSE"
+user-invokable: false
 ---
 
 # Testing & QA Practices
 
-## Overview
-Comprehensive guide for writing effective tests, following TDD practices, and ensuring code quality through automated testing.
+Use this skill when adding tests, fixing failing tests, or deciding how to verify a change safely.
 
-## Language Neutrality Policy
+## Priorities
 
-This skill is language-agnostic. Apply the same testing principles to any stack.
+1. **Test real behavior**
+2. **Keep tests deterministic**
+3. **Match test scope to risk**
+4. **Prefer fast feedback**
+5. **Keep tests maintainable**
 
-- Examples in this document are illustrative, not prescriptive.
-- Prefer the repository's existing test framework and conventions over example tools shown here.
+## Core Rules
 
-## When to Use This Skill
-- Writing unit, integration, or E2E tests
-- Implementing test-driven development (TDD)
-- Setting up testing infrastructure
-- Debugging failing tests
-- Improving test coverage
-- Implementing mocking and stubbing strategies
+### 1. Start with the smallest useful test
 
-## Testing Pyramid
+- Unit tests for isolated logic
+- Integration tests for contracts between components
+- E2E only for critical user journeys and system-level confidence
 
-### Unit Tests (Base - 70%)
-**Purpose:** Test individual functions/methods in isolation
-**Speed:** Very fast (milliseconds)
-**Characteristics:**
-- No external dependencies
-- Test one thing at a time
-- Should be deterministic
-- Easy to write and maintain
+Do not jump to the heaviest test layer first unless the bug or requirement is only visible there.
 
-### Integration Tests (Middle - 20%)
-**Purpose:** Test how components work together
-**Speed:** Moderate (seconds)
-**Characteristics:**
-- Test interactions between modules
-- May use real database/APIs in test mode
-- Test data flow between components
+### 2. Test behavior, not implementation trivia
 
-### E2E Tests (Top - 10%)
-**Purpose:** Test complete user workflows
-**Speed:** Slow (seconds to minutes)
-**Characteristics:**
-- Test from user's perspective
-- Use real browser/environment
-- Test critical user journeys only
+- Assert observable outcomes.
+- Avoid coupling tests to internal helper structure unless that structure is the contract.
+- Refactors should not break good tests when behavior is unchanged.
 
-## Unit Testing Best Practices
+### 3. Keep tests deterministic
 
-### 1. Test Structure (AAA Pattern)
+- Control time, randomness, network, and external services.
+- Use fixtures/factories intentionally.
+- Avoid sleeps and timing races when a proper wait/trigger exists.
 
-### 2. Test Naming Convention
-Use descriptive names that explain what, when, and expected result:
+### 4. Cover the exact risk you introduced
 
-### 3. One Assertion Per Test (When Possible)
+For every meaningful change, ask:
 
-### 4. Test Edge Cases and Error Conditions
+- what can regress?
+- what edge case is easiest to miss?
+- what user-visible behavior proves the fix or feature works?
 
-## Mocking & Stubbing
+### 5. Keep verification layered
 
-### When to Mock
-- External APIs/services
-- Database calls
-- File system operations
-- Time-dependent functions
-- Third-party libraries
+- narrow automated checks first
+- broader integration next when needed
+- manual verification for UX, environment-specific flows, or things automation cannot cheaply prove
 
-### Mock Types
+## By Test Type
 
-#### 1. Function Mocks (Spies)
+### Unit
 
-#### 2. Module Mocks
+- ideal for pure logic, mapping, formatting, validators, reducers, helpers
+- should be fast and isolated
 
-#### 3. Dependency Injection for Testability
+### Integration
 
-## Testing Asynchronous Code
+- use for DB interactions, API contracts, module boundaries, queue/worker behavior, or framework integration
+- prefer realistic wiring with limited mocking
 
-### Promises
+### End-to-End
 
-### Callbacks
+- reserve for high-value journeys
+- keep scenarios independent
+- avoid bloated end-to-end suites that duplicate lower-level coverage
 
-## Test-Driven Development (TDD)
+## Good Testing Defaults
 
-### Red-Green-Refactor Cycle
+- add a regression test for bug fixes when the repo has tests
+- prefer factories over giant inline fixtures
+- keep one test focused on one behavior
+- name tests so failure explains the broken expectation
 
-**1. Red - Write a failing test**
+## Review Heuristics
 
-**2. Green - Write minimal code to pass**
+Look for:
 
-**3. Refactor - Improve code quality**
+- tests that assert implementation details instead of behavior
+- missing regression coverage for the changed risk
+- non-deterministic waits and sleeps
+- over-mocking that hides real integration bugs
+- giant fixtures that make failures hard to reason about
+- E2E coverage used where a smaller test would be clearer
 
-## Integration Testing
+## Anti-Patterns
 
-### Database Integration Tests
+Avoid:
 
-### API Integration Tests
+- asserting every internal call in routine code
+- snapshot-heavy testing without meaningful review discipline
+- tests that only prove mocks were configured
+- one huge test covering many unrelated behaviors
+- fragile selectors in UI tests when stable hooks exist
 
-## E2E Testing (Framework-agnostic)
+## Quick Checklist
 
-1. **Test user journeys, not implementation**
-2. **Use data-testid attributes** instead of CSS selectors
-3. **Keep tests independent** - each test should work in isolation
-4. **Clean up test data** after each test
-5. **Test critical paths only** - E2E tests are expensive
-
-## Code Coverage
-
-### What to Aim For
-- **Statements**: 80%+ coverage
-- **Branches**: 75%+ coverage
-- **Functions**: 80%+ coverage
-- **Lines**: 80%+ coverage
-
-### Coverage Commands (Examples by Ecosystem)
-```bash
-# JavaScript (Jest/Vitest)
-npm test -- --coverage
-
-# JavaScript: Generate HTML report
-npm test -- --coverage --coverageReporters=html
-
-# Python (pytest)
-pytest --cov=. --cov-report=term-missing --cov-report=html
-
-# Java (Maven + JaCoCo)
-mvn test jacoco:report
-
-# Java (Gradle + JaCoCo)
-./gradlew test jacocoTestReport
-
-# Go
-go test ./... -coverprofile=coverage.out
-go tool cover -html=coverage.out -o coverage.html
-
-# Rust
-cargo test
-# Optional coverage tooling depends on team standard (e.g., cargo-llvm-cov)
-```
-
-### Don't Chase 100% Coverage
-- Focus on critical business logic
-- Some code is hard/unnecessary to test (simple getters/setters)
-- Test behavior, not implementation
-
-## Common Testing Patterns
-
-### 1. Test Fixtures (Reusable Test Data)
-
-### 2. Factory Functions
-
-### 3. Custom Matchers
-
-## Testing Best Practices Checklist
-
-- [ ] Tests are independent (can run in any order)
-- [ ] Tests are fast (unit tests < 100ms each)
-- [ ] Test names clearly describe what is being tested
-- [ ] Each test focuses on one behavior
-- [ ] Edge cases and error conditions are tested
-- [ ] No hardcoded values (use constants/fixtures)
-- [ ] Mocks are used appropriately (not over-mocked)
-- [ ] Tests are maintainable (don't test implementation details)
-- [ ] Critical code paths have high coverage
-- [ ] E2E tests cover main user workflows
-
-## Framework-Specific Resources
-
-### JavaScript/TypeScript
-- **Jest**: Unit/Integration testing
-- **Vitest**: Fast Vite-native testing
-- **Playwright**: E2E testing (recommended)
-- **Cypress**: E2E testing (UI-focused)
-- **Testing Library**: React/Vue component testing
-
-### Python
-- **pytest**: Unit/Integration testing
-- **unittest**: Built-in testing
-- **pytest-mock**: Mocking utilities
-- **Selenium**: E2E testing
-
-### Java
-- **JUnit 5**: Unit testing
-- **Mockito**: Mocking framework
-- **TestContainers**: Integration testing with Docker
-- **Selenium/Playwright**: E2E testing
-
-### Go
-- **testing**: Built-in unit testing
-- **testify**: Assertions and mocks
-- **httptest**: HTTP handler testing
-
-### Rust
-- **cargo test**: Unit and integration testing
-- **proptest/quickcheck**: Property-based testing
-- **mockall**: Mocking
-
-### .NET
-- **xUnit/NUnit/MSTest**: Unit/integration testing
-- **Moq/NSubstitute**: Mocking
-- **Playwright/Selenium**: E2E testing
-
-## Common Pitfalls to Avoid
-
-1. **Testing implementation details** - Test behavior, not internal structure
-2. **Over-mocking** - Balance between isolation and realistic tests
-3. **Flaky tests** - Tests that randomly fail (usually timing issues)
-4. **Slow tests** - Keep unit tests fast
-5. **Ignoring test maintenance** - Treat test code like production code
-6. **Testing the framework** - Don't test library code, test your code
-7. **No assertions** - Every test should have at least one assertion
+- [ ] Test scope matches the risk
+- [ ] Behavior under test is explicit
+- [ ] Test is deterministic
+- [ ] Regression path is covered when relevant
+- [ ] Mocks are limited to true external boundaries
+- [ ] Manual verification steps are noted when automation is insufficient

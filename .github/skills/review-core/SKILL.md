@@ -1,3 +1,9 @@
+---
+name: review-core
+description: Shared contract for independent review agents and durable review findings.
+user-invokable: false
+---
+
 # Skill: Review Core Contract
 
 This skill is the single source of truth for independent code-review agents that feed either:

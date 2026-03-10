@@ -1,11 +1,12 @@
 ---
 name: ios
 description: Architecture, SwiftUI, View architecture, and DI rules for iOS apps.
+user-invokable: false
 ---
 
-# 2026 iOS & SwiftUI Architecture Standards
+# iOS & SwiftUI Architecture Standards
 
-This skill defines the rules for building modern iOS applications using SwiftUI, Swift 6 Concurrency, and strict unidirectional data flow.
+Use this skill for iOS work built with SwiftUI, Swift Concurrency, and unidirectional state flow.
 
 ## 1. SwiftUI UI Rules
 
@@ -34,7 +35,7 @@ This skill defines the rules for building modern iOS applications using SwiftUI,
    - Public functions inside a ViewModel MUST represent user intents/events and generally return `Void`.
    - Any function computing values internally should be `private`.
    - State is exposed as published/observable properties.
-2. **Observation (2026 Standards)**:
+2. **Observation**:
    - Use the `@Observable` macro exclusively. Do NOT use legacy `ObservableObject`, `@Published`, or `Combine` bindings for State management unless interacting with legacy code.
 
 ## 3. Dependency Injection
