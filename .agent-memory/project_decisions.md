@@ -1,6 +1,6 @@
 ---
-last_updated: 2026-03-02
-purpose: "Durable project decisions and invariants. Kept concise; updated only when decisions change."
+last_updated: 2026-03-10
+purpose: "Durable project decisions and invariants. Template file for downstream projects."
 ---
 
 # Project Decisions
@@ -50,4 +50,6 @@ Use this after project familiarization / onboarding runs:
 
 ## Entries
 
-_No decisions recorded yet._
+<!-- Add project-specific durable decisions below. Keep this file empty in reusable template repositories. -->
+
+_No project-specific decisions recorded yet._
