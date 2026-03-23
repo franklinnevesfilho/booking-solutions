@@ -3,7 +3,7 @@ name: Designer
 description: Improves UI/UX, accessibility, and visual consistency without changing application logic.
 model: Gemini 3 Pro (Preview) (copilot)
 target: vscode
-user-invokable: false
+user-invocable: false
 disable-model-invocation: true
 tools:
   [

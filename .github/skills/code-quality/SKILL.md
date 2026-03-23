@@ -2,7 +2,7 @@
 name: code-quality
 description: Concise code-quality rules for implementation and review across the stack.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Code Quality & Clean Code

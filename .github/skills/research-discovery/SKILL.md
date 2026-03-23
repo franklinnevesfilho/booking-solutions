@@ -1,7 +1,7 @@
 ---
 name: research-discovery
 description: Fast broad-to-narrow read-only discovery for planning, routing, and review preparation.
-user-invokable: false
+user-invocable: false
 ---
 
 # Research Discovery

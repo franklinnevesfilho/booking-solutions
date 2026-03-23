@@ -3,7 +3,7 @@ name: CoderJr
 description: Writes code for small, low-risk changes and straightforward fixes.
 model: GPT-5.4 mini (copilot)
 target: vscode
-user-invokable: false
+user-invocable: false
 disable-model-invocation: true
 tools:
   [

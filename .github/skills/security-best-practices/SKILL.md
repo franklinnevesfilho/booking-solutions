@@ -2,7 +2,7 @@
 name: security-best-practices
 description: Practical secure-coding rules for auth, data handling, input validation, and defense-in-depth.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Security Best Practices

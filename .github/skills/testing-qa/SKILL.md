@@ -2,7 +2,7 @@
 name: testing-qa
 description: Practical testing rules for unit, integration, and end-to-end verification.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Testing & QA Practices

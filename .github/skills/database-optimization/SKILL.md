@@ -2,7 +2,7 @@
 name: database-optimization
 description: Practical rules for query tuning, schema choices, and safe database performance work.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Database Optimization

@@ -3,7 +3,7 @@ name: Reviewer
 description: Primary review agent using Claude Sonnet 4.6. Uses the shared review-core contract.
 model: Claude Sonnet 4.6 (copilot)
 target: vscode
-user-invokable: false
+user-invocable: false
 disable-model-invocation: true
 tools: ["vscode", "execute", "read", "context7/*", "search", "web"]
 agents: []

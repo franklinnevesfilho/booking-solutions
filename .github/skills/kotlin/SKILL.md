@@ -1,7 +1,7 @@
 ---
 name: kotlin
 description: Clean Architecture, project structure, and patterns for pure Kotlin modules.
-user-invokable: false
+user-invocable: false
 ---
 
 # Kotlin & KMP Architecture Standards

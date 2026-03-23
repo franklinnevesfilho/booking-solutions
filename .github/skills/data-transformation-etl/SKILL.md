@@ -2,7 +2,7 @@
 name: data-transformation-etl
 description: Practical ETL rules for parsing, validation, transformation, and safe loading.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Data Transformation & ETL

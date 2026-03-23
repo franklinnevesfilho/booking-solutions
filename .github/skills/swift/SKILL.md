@@ -1,7 +1,7 @@
 ---
 name: swift
 description: Clean Architecture, concurrency, and patterns for pure Swift modules.
-user-invokable: false
+user-invocable: false
 ---
 
 # Swift Architecture Standards

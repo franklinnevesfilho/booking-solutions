@@ -3,7 +3,7 @@ name: CoderSr
 description: Writes code for complex, cross-cutting, or high-risk changes.
 model: GPT-5.3-Codex (copilot)
 target: vscode
-user-invokable: false
+user-invocable: false
 disable-model-invocation: true
 tools:
   [

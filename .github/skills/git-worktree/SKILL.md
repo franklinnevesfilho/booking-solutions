@@ -2,7 +2,7 @@
 name: git-worktree
 description: "Git Worktree: parallel working trees for isolated branch-level execution, debugging, and safe experimentation."
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Git Worktree

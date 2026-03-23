@@ -2,7 +2,7 @@
 name: typescript-patterns
 description: Practical TypeScript rules for safe application code, APIs, and UI state.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # TypeScript Patterns

@@ -1,7 +1,7 @@
 ---
 name: android
 description: Architecture, Jetpack Compose, Navigation3 KMP, and Koin DI rules for Android apps.
-user-invokable: false
+user-invocable: false
 ---
 
 # Android & Compose Architecture Standards

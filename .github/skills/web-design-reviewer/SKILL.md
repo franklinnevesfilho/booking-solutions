@@ -1,7 +1,7 @@
 ---
 name: web-design-reviewer
 description: Visual UI review workflow for finding and fixing layout, accessibility, and consistency issues.
-user-invokable: false
+user-invocable: false
 ---
 
 # Web Design Reviewer

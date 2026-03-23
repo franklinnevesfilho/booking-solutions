@@ -1,7 +1,7 @@
 ---
 name: review-core
 description: Shared contract for independent review agents and durable review findings.
-user-invokable: false
+user-invocable: false
 ---
 
 # Skill: Review Core Contract

@@ -2,7 +2,7 @@
 name: api-design
 description: Practical rules for designing, evolving, and integrating APIs safely.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # API Design & Integration

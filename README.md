@@ -95,7 +95,7 @@ project_root/
 - `.github/agents/multi-reviewer.agent.md:1` — consolidates multi-review output
 - `.github/agents/debugger.agent.md:1` — reproducible bug diagnosis and fix flow
 
-All internal agents are hidden with `user-invokable: false` and guarded with `disable-model-invocation: true`.
+All internal agents are hidden with `user-invocable: false` and guarded with `disable-model-invocation: true`.
 
 ## Control Plane
 
@@ -308,7 +308,7 @@ Imported Kotlin skills source:
 
 - [Kotlin/kotlin-agent-skills](https://github.com/Kotlin/kotlin-agent-skills)
 
-Default rule: skills should generally remain hidden with `user-invokable: false`.
+Default rule: skills should generally remain hidden with `user-invocable: false`.
 
 ## Memory Model
 

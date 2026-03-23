@@ -2,7 +2,7 @@
 name: frontend-architecture
 description: Practical frontend architecture rules for scalable UI, performance, and maintainability.
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Frontend Architecture & Performance

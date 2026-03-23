@@ -3,7 +3,7 @@ name: MultiReviewer
 description: Consolidates findings from multiple parallel code reviews into a unified report with consensus scoring.
 model: Claude Opus 4.6 (copilot)
 target: vscode
-user-invokable: false
+user-invocable: false
 disable-model-invocation: true
 tools: [vscode, read, context7/*, search, web]
 agents: []

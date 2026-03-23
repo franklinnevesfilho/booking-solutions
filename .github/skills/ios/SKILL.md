@@ -1,7 +1,7 @@
 ---
 name: ios
 description: Architecture, SwiftUI, View architecture, and DI rules for iOS apps.
-user-invokable: false
+user-invocable: false
 ---
 
 # iOS & SwiftUI Architecture Standards

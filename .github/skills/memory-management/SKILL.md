@@ -1,7 +1,7 @@
 ---
 name: memory-management
 description: Durable project-memory rules for `.agent-memory/` plus session-memory boundaries.
-user-invokable: false
+user-invocable: false
 ---
 
 # Skill: Memory Management

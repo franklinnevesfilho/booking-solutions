@@ -1,7 +1,7 @@
 ---
 name: planning-structure
 description: Planning-track selection, epic/feature decomposition, readiness gates, and plan-delta rules.
-user-invokable: false
+user-invocable: false
 ---
 
 # Planning Structure

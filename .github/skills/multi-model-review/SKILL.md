@@ -2,7 +2,7 @@
 name: multi-model-review
 description: "Multi-Model Code Review: consensus-based analysis patterns, consolidation methodology, conflict resolution, and false positive triage."
 license: "See repository LICENSE"
-user-invokable: false
+user-invocable: false
 ---
 
 # Multi-Model Code Review

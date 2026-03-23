@@ -9,7 +9,7 @@ model:
     "Auto (copilot)",
   ]
 target: vscode
-user-invokable: false
+user-invocable: false
 disable-model-invocation: true
 tools: ["search", "read", "web", "vscode/memory"]
 agents: []
