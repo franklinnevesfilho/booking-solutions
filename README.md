@@ -104,10 +104,17 @@ All internal agents are hidden with `user-invocable: false` and guarded with `di
 `Orchestrator` is the sole control plane:
 
 - never writes code directly
+- performs only lightweight triage, routing, and governance
 - delegates all file changes to coding/debug agents
 - routes by task type and planning track
 - decides when to use review, debug, worktrees, and `/delegate`
 - enforces memory-write policy for durable outcomes
+
+`Orchestrator` is not a deep problem-framing agent:
+
+- do not perform deep diagnosis, architecture design, or decomposition inside `Orchestrator`
+- do not resolve ambiguous intent inside `Orchestrator` beyond minimal routing triage
+- escalate immediately to `Planner` when the request has ambiguity, architectural choice, non-trivial decomposition, or unclear implementation readiness
 
 It uses an explicit `agents` allowlist rather than implicit agent fan-out.
 
@@ -259,13 +266,17 @@ flowchart TD
 
 ### Default routing
 
-- planning / ambiguity / architecture → `Planner`
+- planning / ambiguity / architecture / decomposition → `Planner`
 - fast scouting → `Explore`
 - small implementation → `CoderJr`
 - complex implementation → `CoderSr`
 - UI-only implementation → `Designer`
 - review / audit → `Reviewer` or multi-review path
 - reproducible failure → `Debugger`
+
+Routing rule:
+
+- if the request is ambiguous, requires architectural judgment, needs decomposition, or is not implementation-ready, `Orchestrator` must hand off to `Planner` instead of framing the problem itself
 
 ### Review paths
 
