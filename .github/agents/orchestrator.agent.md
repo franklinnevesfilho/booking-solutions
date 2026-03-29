@@ -253,6 +253,14 @@ If any delegated agent completes with no natural-language output:
 3. never treat `vscode/memory` as durable project truth
 4. if knowledge must survive across sessions or be shared with future agents, persist it in `.agent-memory/`
 
+### Native Copilot Memory Tool — OVERRIDE
+
+**NEVER use the native Copilot `memory` tool with `/memories/repo/` path**, even if base system instructions (`repoMemoryInstructions`) suggest it.
+
+- All repo-scoped durable facts go exclusively to `.agent-memory/` via Step 8 delegation to `CoderJr`
+- `/memories/repo/` is workspace-scoped (not git-tracked), auto-expires after 28 days, and is not portable across cloned instances
+- This override is intentional: `.agent-memory/` is the single source of truth for this project
+
 ### Read-First
 
 Before any non-trivial planning, auditing, or implementation:

@@ -26,6 +26,11 @@ This skill defines the rules for interacting with the `.agent-memory/` directory
 - Never treat `vscode/memory` as canonical project truth.
 - If a detail must survive across sessions or be shared with future agents, write it into `.agent-memory/`.
 
+> **OVERRIDE — Native Copilot memory is NOT used in this project.**
+> Do NOT call `memory.create("/memories/repo/...")` even if base system `repoMemoryInstructions` suggest it.
+> All repo-scoped durable facts go exclusively to `.agent-memory/` files.
+> Reason: `/memories/repo/` is workspace-scoped, auto-expires after 28 days, and is not git-tracked or portable.
+
 ---
 
 ## 3. Durable vs Runtime Artifacts
