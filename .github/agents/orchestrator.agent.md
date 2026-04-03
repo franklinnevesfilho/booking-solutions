@@ -80,6 +80,43 @@ Examples:
 
 ## Routing Policy
 
+### Intake Classifier
+
+Before routing, classify the request into one of 3 buckets:
+
+1. `CLEAR_EXECUTION`
+2. `DISCOVERY_FIRST`
+3. `CLARIFICATION_FIRST`
+
+This is a lightweight routing heuristic, not a user-visible phase. Do it quickly and explicitly in your reasoning.
+
+Use `CLEAR_EXECUTION` only when all are true:
+
+1. the user intent is concrete and implementation-ready
+2. the likely file or subsystem scope is already narrow
+3. the behavior is fully specified or purely mechanical
+4. acceptance criteria are obvious from the request or existing bug report
+5. no user-owned product, UX, API, schema, or rollout decision is required
+
+Use `DISCOVERY_FIRST` when both are true:
+
+1. the request is probably actionable without asking the user
+2. quick read-only scouting is needed to find owners, entry points, analogous patterns, or exact file scope
+
+Use `CLARIFICATION_FIRST` when any are true:
+
+1. multiple plausible interpretations of the requested outcome exist
+2. user-visible behavior is not specified well enough
+3. API, schema, persistence, compatibility, security, performance, or rollout expectations are unclear
+4. verification or definition of done is unclear
+5. the executor would otherwise have to choose among plausible product or architecture options
+
+Routing contract:
+
+1. `CLEAR_EXECUTION` -> route directly to the smallest capable executor
+2. `DISCOVERY_FIRST` -> use `Explore`, then re-classify
+3. `CLARIFICATION_FIRST` -> route to `Planner`
+
 ### Default Route by Intent
 
 1. **Planning / ambiguity / architecture / decomposition / unclear readiness** -> `Planner`
@@ -94,6 +131,7 @@ Hard rule:
 1. If the request is ambiguous, requires architectural judgment, needs decomposition, or is not clearly execution-ready, route to `Planner`.
 2. Do not keep the task in `Orchestrator` to resolve those questions yourself.
 3. If the task would require an executor to choose between plausible product, UX, API, schema, or verification options, route to `Planner`.
+4. If the Intake Classifier yields `CLARIFICATION_FIRST`, do not downgrade it to `DISCOVERY_FIRST` or direct execution without new evidence.
 
 ### Track-Aware Routing
 
@@ -318,12 +356,14 @@ Skip Step 8 only for purely mechanical, single-file trivial work that yields no 
 
 Choose the smallest valid route:
 
-1. if the user explicitly asks for a plan, or the task is a new feature, multi-file change, behavior change, ambiguous request, architectural choice, UX/API/data decision, unclear verification, or unclear implementation readiness -> `Planner`
-2. if a quick scouting pass will materially improve routing and the task is still clearly read-only or preparatory -> `Explore`
-3. if the task is a concrete reproducible bug -> `Debugger`
-4. if the task is clearly an analysis/audit request -> `Reviewer` or multi-review path
-5. otherwise route directly to the smallest capable implementation agent
-6. do not use `Orchestrator` itself to resolve ambiguity, define architecture, or invent decomposition
+1. run the Intake Classifier first: `CLEAR_EXECUTION`, `DISCOVERY_FIRST`, or `CLARIFICATION_FIRST`
+2. if the user explicitly asks for a plan, treat the request as `CLARIFICATION_FIRST` unless they already supplied an execution-ready approved plan
+3. if the task is clearly an analysis/audit request, route to `Reviewer` or multi-review path regardless of normal implementation routing
+4. if the task is a concrete reproducible bug with clear repro, route to `Debugger` unless the Intake Classifier found unresolved user-owned behavior or scope questions
+5. if the classifier yields `CLARIFICATION_FIRST`, route to `Planner`
+6. if the classifier yields `DISCOVERY_FIRST`, use `Explore`, then re-classify before any execution routing
+7. if the classifier yields `CLEAR_EXECUTION`, route directly to the smallest capable implementation agent
+8. do not use `Orchestrator` itself to resolve ambiguity, define architecture, or invent decomposition
 
 ### Step 1: Clarify / Plan When Needed
 
