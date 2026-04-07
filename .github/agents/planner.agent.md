@@ -2,7 +2,7 @@
 name: Planner
 description: Owns ambiguity resolution, architecture/decomposition framing, and execution-ready planning.
 argument-hint: Outline the goal or problem to plan
-model: GPT-5.4 (copilot)
+model: GPT-5.1 (copilot)
 target: vscode
 user-invocable: true
 disable-model-invocation: true
