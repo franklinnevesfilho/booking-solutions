@@ -8,6 +8,6 @@ export interface AppointmentWithDetails extends Appointment {
   client: Client | null
   home: ClientHome | null
   job: Job | null
-  invoice?: Invoice 
+  invoice: Invoice | null
   employees: Profile[]
 }

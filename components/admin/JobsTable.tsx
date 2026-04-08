@@ -98,7 +98,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
                 variant="ghost"
                 isLoading={togglingId === job.id}
                 onClick={() => void handleArchiveToggle(job)}
-                className="w-full"
+                className={cn('w-full', job.is_active ? 'text-rose-600 hover:bg-rose-50 hover:text-rose-700' : undefined)}
               >
                 {job.is_active ? 'Archive' : 'Activate'}
               </Button>
@@ -153,6 +153,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
                         variant="ghost"
                         isLoading={togglingId === job.id}
                         onClick={() => void handleArchiveToggle(job)}
+                        className={job.is_active ? 'text-rose-600 hover:bg-rose-50 hover:text-rose-700' : undefined}
                       >
                         {job.is_active ? 'Archive' : 'Activate'}
                       </Button>

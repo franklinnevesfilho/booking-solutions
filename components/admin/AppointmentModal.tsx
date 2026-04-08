@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import type { AppointmentWithDetails, AppointmentInvoice, Client, ClientHome, Job, Profile } from '@/types'
+import type { AppointmentWithDetails, Invoice, Client, ClientHome, Job, Profile } from '@/types'
 
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -45,7 +45,7 @@ type AppointmentApiShape = {
   updated_at: string
   clients?: { id: string; full_name: string } | null
   jobs?: JobOption | null
-  invoice?: AppointmentInvoice | null
+  invoice?: Invoice | null
   client_homes?: {
     id: string
     client_id: string
@@ -218,9 +218,9 @@ function defaultValuesFromProps(
   if (currentAppointment) {
     return {
       title: currentAppointment.title,
-      client_id: currentAppointment.client_id ?? '',
-      job_id: currentAppointment.job_id ?? '',
-      home_id: currentAppointment.home_id ?? '',
+      job_id: currentAppointment.job_id ?? currentAppointment.job?.id ?? '',
+      home_id: currentAppointment.home_id ?? currentAppointment.home?.id ?? '',
+      client_id: currentAppointment.client_id ?? currentAppointment.client?.id ?? '',
       start_time: toDatetimeLocal(currentAppointment.start_time),
       end_time: toDatetimeLocal(currentAppointment.end_time),
       employee_ids: currentAppointment.employees.map((employee) => employee.id),
@@ -272,6 +272,7 @@ export function AppointmentModal({
   defaultEnd,
 }: AppointmentModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const invoiceAmountLoadedRef = useRef(false)
   const [clients, setClients] = useState<ClientOption[]>([])
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
   const [jobs, setJobs] = useState<JobOption[]>([])
@@ -314,7 +315,14 @@ export function AppointmentModal({
   const weeklyDayError = errors.weeklyDays?.message
 
   useEffect(() => {
+    console.log('[AppointmentModal] reset', {
+      invoiceAmountCharged: appointment?.invoice?.amount_charged,
+      invoiceAmountLoadedRef: invoiceAmountLoadedRef.current,
+      job_id: appointment?.job_id,
+    })
+
     reset(defaultValuesFromProps(appointment, defaultStart, defaultEnd))
+    invoiceAmountLoadedRef.current = appointment?.invoice?.amount_charged != null
     setHomes([])
     setErrorMessage(null)
     setShowDeleteScopePrompt(false)
@@ -368,17 +376,28 @@ export function AppointmentModal({
     fetch('/api/jobs?activeOnly=true')
       .then((res) => res.json())
       .then((data: JobOption[]) => {
-        setJobs(data.sort((a, b) => a.name.localeCompare(b.name)))
+        const sorted = data.sort((a, b) => a.name.localeCompare(b.name))
+        if (appointment?.job && !sorted.some((j) => j.id === appointment.job!.id)) {
+          sorted.unshift(appointment.job)
+        }
+        setJobs(sorted)
       })
       .catch(() => {
         // silently fail; jobs array stays empty
       })
       .finally(() => setIsLoadingJobs(false))
-  }, [isOpen])
+  }, [isOpen, appointment])
+
+  useEffect(() => {
+    if (appointment?.job_id && watchedJobId !== appointment.job_id) {
+      invoiceAmountLoadedRef.current = false
+    }
+  }, [watchedJobId, appointment?.job_id])
 
   useEffect(() => {
     if (!watchedJobId || !watchedStart || !watchedEnd) return
     if (dirtyFields.amount_charged) return
+    if (invoiceAmountLoadedRef.current) return
 
     const job = jobs.find((j) => j.id === watchedJobId)
     if (!job) return

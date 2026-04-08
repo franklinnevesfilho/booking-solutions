@@ -31,6 +31,7 @@ const homeFormSchema = z.object({
   state: z.string().trim().optional(),
   postal_code: z.string().trim().optional(),
   country: z.string().trim().optional(),
+  is_primary: z.boolean().optional(),
 })
 
 type ClientFormValues = z.infer<typeof clientSchema>
@@ -68,7 +69,7 @@ function HomeForm({ defaultValues, onSubmit, onCancel, isLoading }: HomeFormProp
   }, [defaultValues, reset])
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
+    <div className="space-y-2">
       <Input label="Label" {...register('label')} />
       <Input label="Street" error={errors.street?.message} {...register('street')} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -81,21 +82,32 @@ function HomeForm({ defaultValues, onSubmit, onCancel, isLoading }: HomeFormProp
         <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading || isSubmitting}>
           Cancel
         </Button>
-        <Button type="submit" isLoading={isLoading || isSubmitting}>
+        <Button type="button" onClick={handleSubmit(onSubmit)} isLoading={isLoading || isSubmitting}>
           Save Home
         </Button>
       </div>
-    </form>
+    </div>
   )
 }
 
 export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const [currentClient, setCurrentClient] = useState<Client | null>(client ?? null)
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [homes, setHomes] = useState<ClientHome[]>([])
   const [isLoadingHomes, setIsLoadingHomes] = useState(false)
   const [showAddHomeForm, setShowAddHomeForm] = useState(false)
+  const [showCreateHomeForm, setShowCreateHomeForm] = useState(false)
+  const [addHomeDefaults, setAddHomeDefaults] = useState<HomeFormValues>({
+    label: '',
+    street: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: '',
+    is_primary: false,
+  })
   const [homeError, setHomeError] = useState<string | null>(null)
   const [editingHomeId, setEditingHomeId] = useState<string | null>(null)
   const [deletingHomeId, setDeletingHomeId] = useState<string | null>(null)
@@ -110,13 +122,49 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
     defaultValues: defaultValues(client),
   })
 
-  useEffect(() => {
-    reset(defaultValues(client))
-    setErrorMessage(null)
-  }, [client, isOpen, reset])
+  const {
+    register: registerCreateHome,
+    reset: resetCreateHome,
+    getValues: getCreateHomeValues,
+  } = useForm<HomeFormValues>({
+    defaultValues: {
+      label: '',
+      street: '',
+      city: '',
+      state: '',
+      postal_code: '',
+      country: '',
+      is_primary: true,
+    },
+  })
 
   useEffect(() => {
-    if (!isOpen || !client?.id) {
+    setCurrentClient(client ?? null)
+    reset(defaultValues(client))
+    setErrorMessage(null)
+    setShowCreateHomeForm(false)
+    resetCreateHome({
+      label: '',
+      street: '',
+      city: '',
+      state: '',
+      postal_code: '',
+      country: '',
+      is_primary: true,
+    })
+    setAddHomeDefaults({
+      label: '',
+      street: '',
+      city: '',
+      state: '',
+      postal_code: '',
+      country: '',
+      is_primary: false,
+    })
+  }, [client, isOpen, reset, resetCreateHome])
+
+  useEffect(() => {
+    if (!isOpen || !currentClient?.id) {
       setHomes([])
       setShowAddHomeForm(false)
       setEditingHomeId(null)
@@ -125,7 +173,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       return
     }
 
-    const clientId = client.id
+    const clientId = currentClient.id
 
     let cancelled = false
 
@@ -161,17 +209,17 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
     return () => {
       cancelled = true
     }
-  }, [isOpen, client?.id])
+  }, [isOpen, currentClient?.id])
 
   async function addHome(values: HomeFormValues) {
-    if (!client?.id) {
+    if (!currentClient?.id) {
       return
     }
 
     try {
       setHomeError(null)
 
-      const response = await fetch(`/api/clients/${client.id}/homes`, {
+      const response = await fetch(`/api/clients/${currentClient.id}/homes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,6 +241,15 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       const savedHome = (await response.json()) as ClientHome
       setHomes((current) => [...current, savedHome])
       setShowAddHomeForm(false)
+      setAddHomeDefaults({
+        label: '',
+        street: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: '',
+        is_primary: false,
+      })
     } catch (error) {
       console.error('Failed to add home', error)
       setHomeError('Failed to add home. Please try again.')
@@ -200,14 +257,14 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
   }
 
   async function updateHome(homeId: string, values: HomeFormValues) {
-    if (!client?.id) {
+    if (!currentClient?.id) {
       return
     }
 
     try {
       setHomeError(null)
 
-      const response = await fetch(`/api/clients/${client.id}/homes/${homeId}`, {
+      const response = await fetch(`/api/clients/${currentClient.id}/homes/${homeId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -236,14 +293,14 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
   }
 
   async function deleteHome(homeId: string) {
-    if (!client?.id) {
+    if (!currentClient?.id) {
       return
     }
 
     try {
       setHomeError(null)
 
-      const response = await fetch(`/api/clients/${client.id}/homes/${homeId}`, {
+      const response = await fetch(`/api/clients/${currentClient.id}/homes/${homeId}`, {
         method: 'DELETE',
       })
 
@@ -276,14 +333,15 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
   }
 
   async function setPrimary(homeId: string) {
-    if (!client?.id) {
+    if (!currentClient?.id) {
+
       return
     }
 
     try {
       setHomeError(null)
 
-      const updateResponse = await fetch(`/api/clients/${client.id}/homes/${homeId}`, {
+      const updateResponse = await fetch(`/api/clients/${currentClient.id}/homes/${homeId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -295,7 +353,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
         throw new Error('Failed to set primary home')
       }
 
-      const refreshResponse = await fetch(`/api/clients/${client.id}/homes`)
+      const refreshResponse = await fetch(`/api/clients/${currentClient.id}/homes`)
       if (!refreshResponse.ok) {
         throw new Error('Failed to refresh homes')
       }
@@ -366,6 +424,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
     try {
       setIsSaving(true)
       setErrorMessage(null)
+      setHomeError(null)
 
       const payload = {
         full_name: values.full_name,
@@ -374,8 +433,8 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
         notes: values.notes || undefined,
       }
 
-      const response = await fetch(client ? `/api/clients/${client.id}` : '/api/clients', {
-        method: client ? 'PATCH' : 'POST',
+      const response = await fetch(currentClient ? `/api/clients/${currentClient.id}` : '/api/clients', {
+        method: currentClient ? 'PATCH' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -387,6 +446,45 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       }
 
       const savedClient = (await response.json()) as Client
+
+      if (!currentClient?.id) {
+        const createHomeValues = getCreateHomeValues()
+        const hasStreet = createHomeValues.street.trim().length > 0
+
+        if (showCreateHomeForm && hasStreet) {
+          try {
+            const homeResponse = await fetch(`/api/clients/${savedClient.id}/homes`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                label: createHomeValues.label || undefined,
+                street: createHomeValues.street,
+                city: createHomeValues.city || undefined,
+                state: createHomeValues.state || undefined,
+                postal_code: createHomeValues.postal_code || undefined,
+                country: createHomeValues.country || undefined,
+                is_primary: createHomeValues.is_primary ?? true,
+              }),
+            })
+
+            if (!homeResponse.ok) {
+              throw new Error('Failed to add home')
+            }
+          } catch (error) {
+            console.error('Failed to add home', error)
+            setCurrentClient(savedClient)
+            setShowCreateHomeForm(false)
+            setAddHomeDefaults(createHomeValues)
+            setShowAddHomeForm(true)
+            setHomeError('Client saved, but failed to add home. Please try again.')
+            onSaved(savedClient)
+            return
+          }
+        }
+      }
+
       onSaved(savedClient)
       onClose()
     } catch (error) {
@@ -410,11 +508,11 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-label={client ? 'Edit client' : 'Add client'}
+        aria-label={currentClient ? 'Edit client' : 'Add client'}
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-10 sm:h-auto sm:max-h-[calc(100%-5rem)] sm:w-[min(700px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">{client ? 'Edit Client' : 'Add Client'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{currentClient ? 'Edit Client' : 'Add Client'}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -440,11 +538,20 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-medium text-slate-700">Homes</p>
-                {client?.id ? (
+                {currentClient?.id ? (
                   <button
                     type="button"
                     onClick={() => {
                       setShowAddHomeForm(true)
+                      setAddHomeDefaults({
+                        label: '',
+                        street: '',
+                        city: '',
+                        state: '',
+                        postal_code: '',
+                        country: '',
+                        is_primary: false,
+                      })
                       setHomeError(null)
                     }}
                     className="text-sm font-medium text-brand-600 hover:text-brand-700"
@@ -454,8 +561,54 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                 ) : null}
               </div>
 
-              {!client?.id ? (
-                <p className="text-sm text-slate-500">Save the client first to add homes.</p>
+              {!currentClient?.id ? (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (showCreateHomeForm) {
+                        setShowCreateHomeForm(false)
+                        resetCreateHome({
+                          label: '',
+                          street: '',
+                          city: '',
+                          state: '',
+                          postal_code: '',
+                          country: '',
+                          is_primary: true,
+                        })
+                      } else {
+                        setShowCreateHomeForm(true)
+                      }
+                    }}
+                    className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                  >
+                    {showCreateHomeForm ? 'Remove home address' : '+ Add a home address'}
+                  </button>
+
+                  {showCreateHomeForm ? (
+                    <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <Input label="Label" {...registerCreateHome('label')} />
+                      <Input label="Street" {...registerCreateHome('street')} />
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <Input label="City" {...registerCreateHome('city')} />
+                        <Input label="State" {...registerCreateHome('state')} />
+                        <Input label="Postal code" {...registerCreateHome('postal_code')} />
+                        <Input label="Country" {...registerCreateHome('country')} />
+                      </div>
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300 accent-brand-600"
+                          {...registerCreateHome('is_primary')}
+                        />
+                        <span className="text-sm text-slate-700">Set as primary home</span>
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">Save the client first to add homes.</p>
+                  )}
+                </div>
               ) : isLoadingHomes ? (
                 <p className="text-sm text-slate-500">Loading homes...</p>
               ) : (
@@ -553,9 +706,20 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                     {showAddHomeForm ? (
                       <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <HomeForm
-                          defaultValues={{ label: '', street: '', city: '', state: '', postal_code: '', country: '' }}
+                          defaultValues={addHomeDefaults}
                           onSubmit={(values) => void addHome(values)}
-                          onCancel={() => setShowAddHomeForm(false)}
+                          onCancel={() => {
+                            setShowAddHomeForm(false)
+                            setAddHomeDefaults({
+                              label: '',
+                              street: '',
+                              city: '',
+                              state: '',
+                              postal_code: '',
+                              country: '',
+                              is_primary: false,
+                            })
+                          }}
                           isLoading={false}
                         />
                       </div>
@@ -578,16 +742,18 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
             </div>
           </div>
 
-          <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button variant="secondary" onClick={onClose} disabled={isSaving}>
-                Cancel
-              </Button>
-              <Button type="submit" isLoading={isSaving}>
-                Save Client
-              </Button>
+          {!editingHomeId && !showAddHomeForm ? (
+            <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button variant="secondary" onClick={onClose} disabled={isSaving}>
+                  Cancel
+                </Button>
+                <Button type="submit" isLoading={isSaving}>
+                  Save Client
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </form>
       </div>
     </div>

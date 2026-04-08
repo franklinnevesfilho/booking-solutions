@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Nunito } from 'next/font/google'
+import NextTopLoader from 'nextjs-toploader'
 
 import './globals.css'
 
@@ -26,7 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={nunito.variable}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <NextTopLoader color="#15803d" showSpinner={false} />
+        {children}
+      </body>
     </html>
   )
 }

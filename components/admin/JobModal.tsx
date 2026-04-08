@@ -113,12 +113,15 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
   }
 
   async function onSubmit(values: JobFormValues) {
+    console.log('Submitting job form with values:', values)
     try {
       setIsSaving(true)
       setErrorMessage(null)
 
       const url = job ? `/api/jobs/${job.id}` : '/api/jobs'
       const method = job ? 'PUT' : 'POST'
+
+      console.log('Sending request to:', url, 'with method:', method, 'and payload:', values)
 
       const payload = job
         ? {
@@ -141,6 +144,7 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
       })
 
       if (!response.ok) {
+        console.log('Response: ', response)
         throw new Error('Failed to save job')
       }
 
@@ -204,14 +208,28 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
               />
             </div>
 
-            <Input
-              label="Default price per hour ($)"
-              type="number"
-              step="0.01"
-              min="0.01"
-              error={errors.default_price_per_hour?.message}
-              {...register('default_price_per_hour')}
-            />
+            <div className="w-full">
+              <label htmlFor="default_price_per_hour" className="mb-1.5 block text-sm font-medium text-slate-700">
+                Price per hour
+              </label>
+              <div className={`flex h-11 overflow-hidden rounded-lg border transition focus-within:ring-2 ${errors.default_price_per_hour ? 'border-rose-500 focus-within:border-rose-500 focus-within:ring-rose-200' : 'border-slate-300 focus-within:border-brand-500 focus-within:ring-brand-200'}`}>
+                <span className="flex items-center border-r border-slate-300 bg-slate-50 px-3 text-sm font-medium text-slate-500">
+                  $
+                </span>
+                <input
+                  id="default_price_per_hour"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
+                  className="h-full w-full bg-white px-3 text-base text-slate-900 outline-none placeholder:text-slate-400"
+                  {...register('default_price_per_hour')}
+                />
+              </div>
+              {errors.default_price_per_hour ? (
+                <p className="mt-1.5 text-sm text-rose-600">{errors.default_price_per_hour.message}</p>
+              ) : null}
+            </div>
 
             {job ? (
               <div className="flex items-center gap-3">
