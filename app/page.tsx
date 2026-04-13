@@ -1,3 +1,37 @@
+'use client'
+
+import { useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+
 export default function HomePage() {
-  return null
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    if (window.location.hash.includes('type=invite')) {
+      router.replace('/accept-invite' + window.location.hash)
+      return
+    }
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        router.replace('/login')
+        return
+      }
+      supabase.from('profiles').select('role').eq('id', user.id).single().then(({ data }) => {
+        if (data?.role === 'admin') {
+          router.replace('/admin')
+        } else {
+          router.replace('/employee')
+        }
+      })
+    })
+  }, [router, supabase])
+
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <p className="text-lg text-slate-500">Loading...</p>
+    </div>
+  )
 }

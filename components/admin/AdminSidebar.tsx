@@ -29,6 +29,16 @@ function CalendarIcon({ className }: { className?: string }) {
   )
 }
 
+function MyScheduleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('h-5 w-5', className)} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="4.5" width="18" height="16" rx="2" />
+      <path d="M8 3v3M16 3v3M3 9.5h18" />
+      <circle cx="12" cy="15" r="2.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 function UsersIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('h-5 w-5', className)} fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -59,6 +69,25 @@ function BriefcaseIcon({ className }: { className?: string }) {
   )
 }
 
+function ReceiptIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('h-5 w-5', className)} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M7 3.5h10v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3v-17Z" />
+      <path d="M9 8.5h6M9 12h6M9 15.5h4" />
+    </svg>
+  )
+}
+
+function UserCircleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={cn('h-5 w-5', className)} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5 19a7 7 0 0 1 14 0" />
+      <circle cx="12" cy="12" r="9" />
+    </svg>
+  )
+}
+
 const navItems: NavItem[] = [
   {
     label: 'Dashboard',
@@ -66,9 +95,24 @@ const navItems: NavItem[] = [
     icon: CalendarIcon,
   },
   {
+    label: 'Calendar',
+    href: '/admin/calendar',
+    icon: CalendarIcon,
+  },
+  {
+    label: 'My Schedule',
+    href: '/admin/my-schedule',
+    icon: MyScheduleIcon,
+  },
+  {
     label: 'Clients',
     href: '/admin/clients',
     icon: UsersIcon,
+  },
+  {
+    label: 'Invoices',
+    href: '/admin/invoices',
+    icon: ReceiptIcon,
   },
   {
     label: 'Employees',
@@ -79,6 +123,11 @@ const navItems: NavItem[] = [
     label: 'Jobs',
     href: '/admin/jobs',
     icon: BriefcaseIcon,
+  },
+  {
+    label: 'Profile',
+    href: '/admin/profile',
+    icon: UserCircleIcon,
   },
 ]
 

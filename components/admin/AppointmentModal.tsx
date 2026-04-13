@@ -9,6 +9,7 @@ import type { AppointmentWithDetails, Invoice, Client, ClientHome, Job, Profile 
 
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { Spinner } from '@/components/ui/Spinner'
 
 type AppointmentModalProps = {
@@ -46,7 +47,7 @@ type AppointmentApiShape = {
   clients?: { id: string; full_name: string } | null
   jobs?: JobOption | null
   invoice?: Invoice | null
-  client_homes?: {
+  homes?: {
     id: string
     client_id: string
     label: string | null
@@ -191,7 +192,7 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
           updated_at: '',
         }
       : null,
-    home: row.client_homes ?? null,
+    home: row.homes ?? null,
     job: (row.jobs as Job | null) ?? null,
     invoice: row.invoice ?? null,
     employees:
@@ -272,6 +273,7 @@ export function AppointmentModal({
   defaultEnd,
 }: AppointmentModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const employeeDropdownRef = useRef<HTMLDivElement>(null)
   const invoiceAmountLoadedRef = useRef(false)
   const [clients, setClients] = useState<ClientOption[]>([])
   const [employees, setEmployees] = useState<EmployeeOption[]>([])
@@ -284,6 +286,7 @@ export function AppointmentModal({
   const [isLoadingHomes, setIsLoadingHomes] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showDeleteScopePrompt, setShowDeleteScopePrompt] = useState(false)
+  const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false)
 
   const isEditMode = Boolean(appointment)
   const hasSeries = Boolean(appointment?.recurrence_series_id)
@@ -307,6 +310,8 @@ export function AppointmentModal({
   const selectedEmployeeIds = watch('employee_ids')
   const clientId = watch('client_id')
   const watchedJobId = watch('job_id')
+  const watchedHomeId = watch('home_id')
+  const watchedStatus = watch('status')
   const watchedStart = watch('start_time')
   const watchedEnd = watch('end_time')
   const watchedAmountCharged = watch('amount_charged')
@@ -420,7 +425,10 @@ export function AppointmentModal({
     async function loadOptions() {
       try {
         setIsLoadingOptions(true)
-        const [clientsResponse, employeesResponse] = await Promise.all([fetch('/api/clients'), fetch('/api/employees')])
+        const [clientsResponse, employeesResponse] = await Promise.all([
+          fetch('/api/clients'),
+          fetch('/api/employees?assignable=true'),
+        ])
 
         if (!clientsResponse.ok || !employeesResponse.ok) {
           throw new Error('Unable to load form options')
@@ -495,6 +503,20 @@ export function AppointmentModal({
     }
   }, [isOpen, onClose])
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target as Node)) {
+        setEmployeeDropdownOpen(false)
+      }
+    }
+
+    if (employeeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [employeeDropdownOpen])
+
   const sortedClients = useMemo(
     () => [...clients].sort((a, b) => a.full_name.localeCompare(b.full_name)),
     [clients],
@@ -504,6 +526,14 @@ export function AppointmentModal({
     () => [...employees].sort((a, b) => a.full_name.localeCompare(b.full_name)),
     [employees],
   )
+
+  const selectedEmployees = sortedEmployees.filter((employee) => selectedEmployeeIds.includes(employee.id))
+  const triggerLabel =
+    selectedEmployees.length === 0
+      ? 'Select employees...'
+      : selectedEmployees.length <= 2
+        ? selectedEmployees.map((employee) => employee.full_name).join(', ')
+        : `${selectedEmployees.length} employees selected`
 
   if (!isOpen) {
     return null
@@ -671,32 +701,31 @@ export function AppointmentModal({
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</div>
             ) : null}
 
-            {isLoadingOptions ? (
-              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                <Spinner className="h-4 w-4" />
-                Loading clients and employees...
+            {isLoadingOptions || isLoadingJobs ? (
+              <div className="flex flex-1 items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-3 text-slate-500">
+                  <Spinner className="h-8 w-8" />
+                  <p className="text-sm">Loading appointment details…</p>
+                </div>
               </div>
-            ) : null}
-
-            <Input label="Title" placeholder="Kitchen + living room clean" error={errors.title?.message} {...register('title')} />
+            ) : (
+              <>
+                <Input label="Title" placeholder="Kitchen + living room clean" error={errors.title?.message} {...register('title')} />
 
             <div>
               <label htmlFor="job_id" className="mb-1.5 block text-sm font-medium text-slate-700">
                 Job <span className="text-red-500">*</span>
               </label>
-              <select
-                id="job_id"
-                {...register('job_id')}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+              <SearchableSelect
+                options={jobs.map((job) => ({
+                  id: job.id,
+                  label: `${job.name} - $${job.default_price_per_hour.toFixed(2)}/hr`,
+                }))}
+                value={watchedJobId ?? ''}
+                onChange={(id) => setValue('job_id', id, { shouldValidate: true })}
+                placeholder="Select a job"
                 disabled={isLoadingJobs}
-              >
-                <option value="">Select a job</option>
-                {jobs.map((job) => (
-                  <option key={job.id} value={job.id}>
-                    {job.name} - ${job.default_price_per_hour.toFixed(2)}/hr
-                  </option>
-                ))}
-              </select>
+              />
               {errors.job_id ? <p className="mt-1.5 text-sm text-rose-600">{errors.job_id.message}</p> : null}
             </div>
 
@@ -704,18 +733,12 @@ export function AppointmentModal({
               <label htmlFor="client_id" className="mb-1.5 block text-sm font-medium text-slate-700">
                 Client
               </label>
-              <select
-                id="client_id"
-                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                {...register('client_id')}
-              >
-                <option value="">Unassigned</option>
-                {sortedClients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.full_name}
-                  </option>
-                ))}
-              </select>
+              <SearchableSelect
+                options={sortedClients.map((client) => ({ id: client.id, label: client.full_name }))}
+                value={clientId ?? ''}
+                onChange={(id) => setValue('client_id', id)}
+                placeholder="Unassigned"
+              />
             </div>
 
             {clientId ? (
@@ -736,21 +759,16 @@ export function AppointmentModal({
                         </span>
                       ) : null}
                     </label>
-                    <select
-                      id="home_id"
-                      className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                      {...register('home_id')}
+                    <SearchableSelect
+                      options={homes.map((home) => ({
+                        id: home.id,
+                        label: `${home.label ? `${home.label} - ` : ''}${home.street}${home.city ? `, ${home.city}` : ''}`,
+                      }))}
+                      value={watchedHomeId ?? ''}
+                      onChange={(id) => setValue('home_id', id)}
+                      placeholder="Select a home"
                       disabled={homes.length === 1}
-                    >
-                      <option value="">Select a home</option>
-                      {homes.map((home) => (
-                        <option key={home.id} value={home.id}>
-                          {home.label ? `${home.label} - ` : ''}
-                          {home.street}
-                          {home.city ? `, ${home.city}` : ''}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     {homes.length === 1 ? (
                       <p className="mt-1 text-xs text-slate-500">This client has 1 home on file - it&apos;s pre-selected.</p>
                     ) : null}
@@ -779,33 +797,54 @@ export function AppointmentModal({
               />
             </div>
 
-            <fieldset>
-              <legend className="mb-2 block text-sm font-medium text-slate-700">Assigned employees</legend>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {sortedEmployees.length === 0 ? (
-                  <p className="text-sm text-slate-500">No employees found.</p>
-                ) : (
-                  sortedEmployees.map((employee) => {
-                    const checked = selectedEmployeeIds.includes(employee.id)
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Assigned employees</label>
+              <div ref={employeeDropdownRef} className="relative">
+                <button
+                  type="button"
+                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-left text-base text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                  onClick={() => setEmployeeDropdownOpen((open) => !open)}
+                  aria-haspopup="listbox"
+                  aria-expanded={employeeDropdownOpen}
+                >
+                  <span className="block truncate pr-6">{triggerLabel}</span>
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-500" aria-hidden="true">
+                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </button>
 
-                    return (
-                      <label
-                        key={employee.id}
-                        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) => handleEmployeeToggle(employee.id, event.target.checked)}
-                          className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                        />
-                        <span>{employee.full_name}</span>
-                      </label>
-                    )
-                  })
-                )}
+                {employeeDropdownOpen ? (
+                  <div className="absolute left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                    {sortedEmployees.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-slate-500">No employees found.</p>
+                    ) : (
+                      sortedEmployees.map((employee) => {
+                        const checked = selectedEmployeeIds.includes(employee.id)
+
+                        return (
+                          <label
+                            key={employee.id}
+                            className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 ${
+                              checked ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(event) => handleEmployeeToggle(employee.id, event.target.checked)}
+                              className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                            />
+                            <span>{employee.full_name}</span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                ) : null}
               </div>
-            </fieldset>
+            </div>
 
             <div>
               <label htmlFor="notes" className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -825,15 +864,16 @@ export function AppointmentModal({
                 <label htmlFor="status" className="mb-1.5 block text-sm font-medium text-slate-700">
                   Status
                 </label>
-                <select
-                  id="status"
-                  className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                  {...register('status')}
-                >
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                <SearchableSelect
+                  options={[
+                    { id: 'scheduled', label: 'Scheduled' },
+                    { id: 'completed', label: 'Completed' },
+                    { id: 'cancelled', label: 'Cancelled' },
+                  ]}
+                  value={watchedStatus ?? ''}
+                  onChange={(id) => setValue('status', id as 'scheduled' | 'completed' | 'cancelled')}
+                  placeholder="Select status"
+                />
               </div>
             ) : (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -1026,6 +1066,8 @@ export function AppointmentModal({
                 </div>
               </div>
             ) : null}
+              </>
+            )}
           </div>
 
           <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">

@@ -1,10 +1,10 @@
-import { ClientsTable } from '@/components/admin/ClientsTable'
+import { ClientsTable } from '@/components/admin/client/ClientsTable'
 import { createClient } from '@/lib/supabase/server'
 import type { ClientWithHomes } from '@/types'
 
 export default async function AdminClientsPage() {
   const supabase = await createClient()
-  const { data, error } = await supabase.from('clients').select('*, client_homes(*)').order('full_name', { ascending: true })
+  const { data, error } = await supabase.from('clients').select('*, homes(*)').order('full_name', { ascending: true })
 
   if (error) {
     throw new Error('Failed to load clients')

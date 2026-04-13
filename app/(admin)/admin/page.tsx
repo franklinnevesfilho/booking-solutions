@@ -1,129 +1,162 @@
-import { addMonths, endOfMonth, startOfMonth, subMonths } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
-import { AdminCalendar } from '@/components/admin/AdminCalendar'
+import { PageHeader } from '@/components/admin/PageHeader'
+import { Card } from '@/components/ui/Card'
 import { createClient } from '@/lib/supabase/server'
-import type { AppointmentWithDetails } from '@/types'
 
-type AppointmentRow = {
-  id: string
-  client_id: string | null
-  home_id: string | null
-  title: string
-  start_time: string
-  end_time: string
-  status: 'scheduled' | 'completed' | 'cancelled'
-  notes: string | null
-  recurrence_series_id: string | null
-  recurrence_rule: string | null
-  is_master: boolean
-  job_id: string | null
-  created_at: string
-  updated_at: string
-  clients: {
-    id: string
-    full_name: string
-    email: string | null
-    phone: string | null
-    address: string | null
-    notes: string | null
-    created_at: string
-    updated_at: string
-  } | null
+type InvoiceSummaryRow = {
+  amount_charged: number
+  discount_amount: number
+  is_paid: boolean
 }
 
-type AssignmentRow = {
-  appointment_id: string
-  employee_id: string
-  profiles: {
-    id: string
+type UpcomingAppointmentRow = {
+  id: string
+  start_time: string
+  status: 'scheduled' | 'completed' | 'cancelled'
+  clients: {
     full_name: string
-    phone: string | null
-    role: 'admin' | 'employee'
-    is_active: boolean
-    created_at: string
-    updated_at: string
   } | null
+  jobs: {
+    name: string
+  } | null
+  invoices:
+    | {
+        is_paid: boolean
+      }[]
+    | null
+}
+
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+function formatCurrency(value: number) {
+  return currencyFormatter.format(value)
+}
+
+function getStatusBadgeClass(status: 'scheduled' | 'completed' | 'cancelled') {
+  if (status === 'completed') {
+    return 'bg-emerald-100 text-emerald-700 ring-emerald-200'
+  }
+
+  if (status === 'cancelled') {
+    return 'bg-rose-100 text-rose-700 ring-rose-200'
+  }
+
+  return 'bg-sky-100 text-sky-700 ring-sky-200'
 }
 
 export default async function AdminPage() {
   const supabase = await createClient()
+  const nowIso = new Date().toISOString()
 
-  const now = new Date()
-  const start = startOfMonth(subMonths(now, 1)).toISOString()
-  const end = endOfMonth(addMonths(now, 1)).toISOString()
+  const { data: invoiceSummaryData, error: invoiceSummaryError } = await supabase
+    .from('invoices')
+    .select('amount_charged, discount_amount, is_paid')
 
-  const { data: appointmentsData, error } = await supabase
+  if (invoiceSummaryError) {
+    throw new Error('Failed to load invoice summary')
+  }
+
+  const invoiceSummaryRows = (invoiceSummaryData ?? []) as InvoiceSummaryRow[]
+
+  const totalIncome = invoiceSummaryRows
+    .filter((invoice) => invoice.is_paid)
+    .reduce((sum, invoice) => sum + (invoice.amount_charged - invoice.discount_amount), 0)
+
+  const pendingInvoices = invoiceSummaryRows.filter((invoice) => !invoice.is_paid)
+  const pendingInvoiceCount = pendingInvoices.length
+  const pendingInvoiceAmount = pendingInvoices.reduce((sum, invoice) => sum + (invoice.amount_charged - invoice.discount_amount), 0)
+
+  const { count: upcomingCount, error: upcomingCountError } = await supabase
     .from('appointments')
-    .select('*, clients(*)')
-    .gte('start_time', start)
-    .lte('start_time', end)
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'scheduled')
+    .gt('start_time', nowIso)
+
+  if (upcomingCountError) {
+    throw new Error('Failed to load upcoming appointments count')
+  }
+
+  const { data: upcomingData, error: upcomingError } = await supabase
+    .from('appointments')
+    .select('id, start_time, status, clients(full_name), jobs(name), invoices(is_paid)')
+    .eq('status', 'scheduled')
+    .gt('start_time', nowIso)
     .order('start_time', { ascending: true })
+    .limit(20)
 
-  if (error) {
-    throw new Error('Failed to load appointments')
+  if (upcomingError) {
+    throw new Error('Failed to load upcoming appointments')
   }
 
-  const appointmentRows = (appointmentsData ?? []) as unknown as AppointmentRow[]
+  const upcomingAppointments = (upcomingData ?? []) as unknown as UpcomingAppointmentRow[]
+  const upcomingAppointmentsCount = upcomingCount ?? 0
 
-  const appointmentIds = appointmentRows.map((appointment) => appointment.id)
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Dashboard" />
 
-  let assignmentsMap = new Map<string, AssignmentRow[]>()
+      <section className="grid gap-4 md:grid-cols-3">
+        <Card className="space-y-2">
+          <p className="text-sm font-medium text-slate-600">Total Income</p>
+          <p className="text-2xl font-semibold tracking-tight text-slate-900">{formatCurrency(totalIncome)}</p>
+        </Card>
 
-  if (appointmentIds.length > 0) {
-    const { data: assignments, error: assignmentsError } = await supabase
-      .from('appointment_employees')
-      .select('appointment_id, employee_id, profiles!appointment_employees_employee_id_fkey(*)')
-      .in('appointment_id', appointmentIds as any)
+        <Card className="space-y-2">
+          <p className="text-sm font-medium text-slate-600">Pending Invoices</p>
+          <p className="text-2xl font-semibold tracking-tight text-slate-900">{formatCurrency(pendingInvoiceAmount)}</p>
+          <p className="text-sm text-slate-600">{pendingInvoiceCount} {pendingInvoiceCount === 1 ? 'invoice' : 'invoices'} pending</p>
+        </Card>
 
-    if (assignmentsError) {
-      throw new Error('Failed to load appointment assignments')
-    }
+        <Card className="space-y-2">
+          <p className="text-sm font-medium text-slate-600">Upcoming Appointments</p>
+          <p className="text-2xl font-semibold tracking-tight text-slate-900">{upcomingAppointmentsCount}</p>
+        </Card>
+      </section>
 
-    assignmentsMap = (assignments ?? []).reduce((acc, row) => {
-      const assignment = row as unknown as AssignmentRow
-      const current = acc.get(assignment.appointment_id) ?? []
-      current.push(assignment)
-      acc.set(assignment.appointment_id, current)
-      return acc
-    }, new Map<string, AssignmentRow[]>())
-  }
+      <Card className="overflow-hidden p-0">
+        <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
+          <h2 className="text-base font-semibold text-slate-900">Upcoming Appointments</h2>
+        </div>
 
-  const appointments: AppointmentWithDetails[] = appointmentRows.map((appointment) => ({
-    id: appointment.id,
-    client_id: appointment.client_id,
-    home_id: appointment.home_id,
-    home: null,
-    job_id: appointment.job_id ?? null,
-    job: null,
-    title: appointment.title,
-    start_time: appointment.start_time,
-    end_time: appointment.end_time,
-    status: appointment.status,
-    notes: appointment.notes,
-    recurrence_series_id: appointment.recurrence_series_id,
-    recurrence_rule: appointment.recurrence_rule,
-    is_master: appointment.is_master,
-    created_at: appointment.created_at,
-    updated_at: appointment.updated_at,
-    client: appointment.clients ?? null,
-    employees:
-      assignmentsMap
-        .get(appointment.id)
-        ?.map((assignment) => assignment.profiles)
-        .filter(
-          (
-            profile,
-          ): profile is {
-            id: string
-            full_name: string
-            phone: string | null
-            role: 'admin' | 'employee'
-            is_active: boolean
-            created_at: string
-            updated_at: string
-          } => Boolean(profile),
-        ) ?? [],
-  }))
+        {upcomingAppointments.length === 0 ? (
+          <div className="px-5 py-8 text-sm text-slate-600 sm:px-6">No upcoming appointments.</div>
+        ) : (
+          <ul className="divide-y divide-slate-200">
+            {upcomingAppointments.map((appointment) => {
+              const appointmentInvoice = appointment.invoices?.[0] ?? null
+              const invoiceLabel = appointmentInvoice ? (appointmentInvoice.is_paid ? 'Paid' : 'Pending') : 'No Invoice'
 
-  return <AdminCalendar initialAppointments={appointments} />
+              return (
+                <li key={appointment.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[1.5fr_1fr_1fr_auto] sm:items-center sm:px-6">
+                  <p className="text-sm font-medium text-slate-800">
+                    {format(parseISO(appointment.start_time), "MMM d, yyyy '·' h:mm a")}
+                  </p>
+                  <p className="text-sm text-slate-700">{appointment.clients?.full_name ?? 'No Client'}</p>
+                  <p className="text-sm text-slate-700">{appointment.jobs?.name ?? 'No Job'}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${getStatusBadgeClass(appointment.status)}`}>
+                      {appointment.status === 'scheduled'
+                        ? 'Scheduled'
+                        : appointment.status === 'completed'
+                          ? 'Completed'
+                          : 'Cancelled'}
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
+                      {invoiceLabel}
+                    </span>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Card>
+    </div>
+  )
 }

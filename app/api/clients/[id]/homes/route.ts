@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const supabase = await createClient()
   const { data, error } = await supabase
-    .from('client_homes')
+    .from('homes')
     .select('*')
     .eq('client_id', id)
     .order('is_primary', { ascending: false })
@@ -93,7 +93,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (parsed.data.is_primary) {
     const { error: unsetPrimaryError } = await supabase
-      .from('client_homes')
+      .from('homes')
       .update({ is_primary: false })
       .eq('client_id', id)
       .eq('is_primary', true)
@@ -105,7 +105,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const { data, error } = await supabase
-    .from('client_homes')
+    .from('homes')
     .insert({
       client_id: id,
       ...parsed.data,

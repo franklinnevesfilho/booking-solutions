@@ -4,7 +4,7 @@ import type { AppointmentWithDetails, ClientHome, Database, Profile } from '@/ty
 
 type AppointmentRowWithClient = Database['public']['Tables']['appointments']['Row'] & {
   clients: Database['public']['Tables']['clients']['Row'] | null
-  client_homes: ClientHome | null
+  homes: ClientHome | null
   jobs: {
     id: string
     name: string
@@ -17,6 +17,18 @@ type AppointmentRowWithClient = Database['public']['Tables']['appointments']['Ro
 }
 
 type AssignmentRowWithProfile = {
+  employee_id: string
+  profiles: Profile | Profile[] | null
+}
+
+type UserScheduleAppointmentRow = Database['public']['Tables']['appointments']['Row'] & {
+  clients: Database['public']['Tables']['clients']['Row'] | null
+  homes: ClientHome | null
+  jobs: Database['public']['Tables']['jobs']['Row'] | null
+}
+
+type UserScheduleAssignmentRow = {
+  appointment_id: string
   employee_id: string
   profiles: Profile | Profile[] | null
 }
@@ -42,7 +54,7 @@ export async function getAppointmentWithDetails(
 
   const { data: appointmentRow, error: appointmentError } = await supabase
     .from('appointments')
-    .select('*, clients(*), client_homes!home_id(*), jobs!job_id(*)')
+    .select('*, clients(*), homes!home_id(*), jobs!job_id(*)')
     .eq('id', appointmentId)
     .single()
 
@@ -75,10 +87,10 @@ export async function getAppointmentWithDetails(
 
   logger.info('Resolved employees for appointment', { appointmentId, employeeCount: employees.length })
 
-  const { clients, client_homes, jobs: jobRow, status, ...appointmentFields } = appointment
+  const { clients, homes, jobs: jobRow, status, ...appointmentFields } = appointment
 
   const { data: invoiceRow, error: invoiceError } = await supabase
-    .from('appointment_invoices')
+    .from('invoices')
     .select('*')
     .eq('appointment_id', appointmentId)
     .maybeSingle()
@@ -108,7 +120,7 @@ export async function getAppointmentWithDetails(
   logger.info('Successfully assembled appointment with details', {
     appointmentId,
     hasClient: Boolean(clients),
-    hasHome: Boolean(client_homes),
+    hasHome: Boolean(homes),
     hasJob: Boolean(jobRow),
     hasInvoice: Boolean(invoice),
     employeeCount: employees.length,
@@ -119,11 +131,125 @@ export async function getAppointmentWithDetails(
     ...appointmentFields,
     status: status as AppointmentWithDetails['status'],
     client: clients,
-    home: client_homes,
+    home: homes,
     job: jobRow ?? null,
     invoice,
     employees,
   }
+}
+
+/**
+ * Returns all appointments where appointment_employees.employee_id = userId.
+ * Works for both admin and employee roles.
+ */
+export async function getAppointmentsForUser(
+  supabase: SupabaseClient,
+  userId: string,
+  start?: string,
+  end?: string,
+): Promise<AppointmentWithDetails[]> {
+  logger.info('Fetching appointments for user schedule', { userId, start, end })
+
+  const { data: assignedRows, error: assignedError } = await supabase
+    .from('appointment_employees')
+    .select('appointment_id')
+    .eq('employee_id', userId)
+
+  if (assignedError) {
+    logger.error('Failed to fetch assignment rows for user', { userId, error: assignedError.message, code: assignedError.code })
+    throw assignedError
+  }
+
+  const appointmentIds = (assignedRows ?? []).map((row) => row.appointment_id)
+
+  if (appointmentIds.length === 0) {
+    logger.info('No assigned appointments found for user', { userId })
+    return []
+  }
+
+  let appointmentsQuery = supabase
+    .from('appointments')
+    .select('*, clients(*), homes!home_id(*), jobs!job_id(*)')
+    .in('id', appointmentIds)
+    .order('start_time', { ascending: true })
+
+  if (start) {
+    appointmentsQuery = appointmentsQuery.gte('start_time', start)
+  }
+
+  if (end) {
+    appointmentsQuery = appointmentsQuery.lte('start_time', end)
+  }
+
+  const { data: appointmentRows, error: appointmentsError } = await appointmentsQuery
+
+  if (appointmentsError) {
+    logger.error('Failed to fetch appointments for user', { userId, error: appointmentsError.message, code: appointmentsError.code })
+    throw appointmentsError
+  }
+
+  const appointments = (appointmentRows ?? []) as unknown as UserScheduleAppointmentRow[]
+
+  if (appointments.length === 0) {
+    logger.info('No appointments found in requested range for user', { userId, start, end })
+    return []
+  }
+
+  const { data: assignmentRows, error: assignmentsError } = await supabase
+    .from('appointment_employees')
+    .select('appointment_id, employee_id, profiles!appointment_employees_employee_id_fkey(*)')
+    .in('appointment_id', appointments.map((appointment) => appointment.id))
+
+  if (assignmentsError) {
+    logger.error('Failed to fetch assignment details for user appointments', {
+      userId,
+      error: assignmentsError.message,
+      code: assignmentsError.code,
+    })
+    throw assignmentsError
+  }
+
+  const assignmentsByAppointment = new Map<string, Profile[]>()
+
+  for (const row of (assignmentRows ?? []) as UserScheduleAssignmentRow[]) {
+    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
+
+    if (!profile) {
+      continue
+    }
+
+    const existing = assignmentsByAppointment.get(row.appointment_id) ?? []
+    existing.push(profile)
+    assignmentsByAppointment.set(row.appointment_id, existing)
+  }
+
+  logger.info('Successfully assembled appointments for user schedule', {
+    userId,
+    appointmentCount: appointments.length,
+    assignmentCount: (assignmentRows ?? []).length,
+  })
+
+  return appointments.map((appointment) => ({
+    id: appointment.id,
+    client_id: appointment.client_id,
+    home_id: appointment.home_id,
+    job_id: appointment.job_id,
+    title: appointment.title,
+    start_time: appointment.start_time,
+    end_time: appointment.end_time,
+    status: appointment.status as AppointmentWithDetails['status'],
+    notes: appointment.notes,
+    recurrence_series_id: appointment.recurrence_series_id,
+    recurrence_rule: appointment.recurrence_rule,
+    is_master: appointment.is_master,
+    created_at: appointment.created_at,
+    updated_at: appointment.updated_at,
+    client: appointment.clients,
+    home: appointment.homes,
+    job: appointment.jobs,
+    invoice: null,
+    employees: assignmentsByAppointment.get(appointment.id) ?? [],
+  }))
 }
 
 export async function getSeriesNotificationAppointment(

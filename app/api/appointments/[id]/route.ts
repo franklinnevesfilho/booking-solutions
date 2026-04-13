@@ -73,7 +73,7 @@ type AppointmentDetail = Database['public']['Tables']['appointments']['Row'] & {
     created_at: string
     updated_at: string
   } | null
-  client_homes: ClientHome | null
+  homes: ClientHome | null
   jobs: {
     id: string
     name: string
@@ -177,7 +177,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('appointments')
-    .select('*, clients(*), client_homes!home_id(*), jobs!job_id(*)')
+    .select('*, clients(*), homes!home_id(*), jobs!job_id(*)')
     .eq('id', id)
     .single()
 
@@ -204,7 +204,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
     if (session.role === 'admin') {
       const { data: invoice, error: invoiceError } = await supabase
-        .from('appointment_invoices')
+        .from('invoices')
         .select('*')
         .eq('appointment_id', id)
         .maybeSingle()
@@ -308,7 +308,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     console.log('Verifying home belongs to client:', { homeId, clientId: clientIdForCheck })
 
     const { data: homeCheck, error: homeCheckError } = await supabase
-      .from('client_homes')
+      .from('homes')
       .select('client_id')
       .eq('id', homeId)
       .single()
@@ -406,6 +406,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         }
 
         if (employeeIds.length > 0) {
+          // Assignment accepts any valid profiles.id (admin or employee).
           const assignmentRows = seriesIds.flatMap((appointmentId) =>
             employeeIds.map((employeeId) => ({
               appointment_id: appointmentId,
@@ -433,7 +434,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
       const { data: refreshed, error: refreshedError } = await supabase
         .from('appointments')
-        .select('*, clients(*), client_homes!home_id(*), jobs!job_id(*)')
+        .select('*, clients(*), homes!home_id(*), jobs!job_id(*)')
         .eq('recurrence_series_id', base.recurrence_series_id)
         .order('start_time', { ascending: true })
 
@@ -513,7 +514,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (invoiceInput) {
       console.log('Upserting invoice for appointment:', id)
 
-      const { error: invoiceError } = await (supabase.from('appointment_invoices') as any).upsert(
+      const { error: invoiceError } = await (supabase.from('invoices') as any).upsert(
         {
           appointment_id: id,
           amount_charged: invoiceInput.amount_charged,
@@ -556,6 +557,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       }
 
       if (employeeIds.length > 0) {
+        // Assignment accepts any valid profiles.id (admin or employee).
         const { error: insertAssignmentsError } = await supabase.from('appointment_employees').insert(
           employeeIds.map((employeeId) => ({
             appointment_id: id,
@@ -579,7 +581,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     const { data: refreshed, error: refreshedError } = await supabase
       .from('appointments')
-      .select('*, clients(*), client_homes!home_id(*), jobs!job_id(*)')
+      .select('*, clients(*), homes!home_id(*), jobs!job_id(*)')
       .eq('id', id)
       .single()
 
@@ -617,7 +619,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
 
     const { data: invoice } = await supabase
-      .from('appointment_invoices')
+      .from('invoices')
       .select('*')
       .eq('appointment_id', id)
       .maybeSingle()

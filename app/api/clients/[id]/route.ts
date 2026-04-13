@@ -54,9 +54,9 @@ export async function GET(request: Request, { params }: RouteContext) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('clients')
-    .select('*, client_homes(*)')
+    .select('*, homes(*)')
     .eq('id', id)
-    .order('created_at', { ascending: true, foreignTable: 'client_homes' })
+    .order('created_at', { ascending: true, foreignTable: 'homes' })
     .single()
 
   if (error) {

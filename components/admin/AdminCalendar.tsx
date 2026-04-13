@@ -6,18 +6,22 @@ import listPlugin from '@fullcalendar/list'
 import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import type { DateSelectArg, DatesSetArg, EventClickArg, EventDropArg } from '@fullcalendar/core'
-import { addHours, formatISO, subMonths, addMonths } from 'date-fns'
-import { useMemo, useState } from 'react'
+import { addHours, addMonths, format, formatISO, subDays, subMonths } from 'date-fns'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import type { AppointmentWithDetails } from '@/types'
+import type { AppointmentWithDetails, ClientWithHomes } from '@/types/composed'
+import type { Client, ClientHome, Invoice, Job, Profile } from '@/types/models'
 
 import { AppointmentModal } from '@/components/admin/AppointmentModal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { Spinner } from '@/components/ui/Spinner'
 
 interface AdminCalendarProps {
   initialAppointments: AppointmentWithDetails[]
+  clients: ClientWithHomes[]
+  employees: Profile[]
 }
 
 type AppointmentApiShape = {
@@ -25,6 +29,7 @@ type AppointmentApiShape = {
   title: string
   client_id: string | null
   home_id: string | null
+  job_id: string | null
   start_time: string
   end_time: string
   status: 'scheduled' | 'completed' | 'cancelled'
@@ -34,7 +39,10 @@ type AppointmentApiShape = {
   is_master: boolean
   created_at: string
   updated_at: string
-  clients?: { id: string; full_name: string } | null
+  clients?: Client | null
+  home?: ClientHome | null
+  invoice?: Invoice | null
+  jobs?: Job | null
   appointment_employees?: Array<{
     employee_id: string
     profiles: {
@@ -55,6 +63,7 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
     id: row.id,
     client_id: row.client_id,
     home_id: row.home_id,
+    job_id: row.job_id,
     title: row.title,
     start_time: row.start_time,
     end_time: row.end_time,
@@ -90,12 +99,18 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
           created_at: '',
           updated_at: '',
         })) ?? [],
+    home: row.home ?? null,
+    invoice: row.invoice ?? null,
+    job: row.jobs ?? null,
+
   }
 }
 
-export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
+export function AdminCalendar({ initialAppointments, clients, employees }: AdminCalendarProps) {
   const [appointments, setAppointments] = useState(initialAppointments)
   const [isMobile, setIsMobile] = useState(false)
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  const [mobileTitle, setMobileTitle] = useState('')
   const [calendarRange, setCalendarRange] = useState(() => {
     const now = new Date()
     return {
@@ -105,6 +120,25 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [filterClientId, setFilterClientId] = useState<string>('')
+  const [filterHomeId, setFilterHomeId] = useState<string>('')
+  const [filterEmployeeId, setFilterEmployeeId] = useState<string>('')
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('')
+  const [filterDateTo, setFilterDateTo] = useState<string>('')
+
+  const filterClientIdRef = useRef(filterClientId)
+  const filterHomeIdRef = useRef(filterHomeId)
+  const filterEmployeeIdRef = useRef(filterEmployeeId)
+  const filterDateFromRef = useRef(filterDateFrom)
+  const filterDateToRef = useRef(filterDateTo)
+  const calendarRef = useRef<FullCalendar | null>(null)
+
+  // Keep refs in sync with state on every render
+  filterClientIdRef.current = filterClientId
+  filterHomeIdRef.current = filterHomeId
+  filterEmployeeIdRef.current = filterEmployeeId
+  filterDateFromRef.current = filterDateFrom
+  filterDateToRef.current = filterDateTo
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null)
@@ -128,12 +162,66 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
     [appointments],
   )
 
-  async function refreshAppointments(rangeStart: string, rangeEnd: string) {
+  const availableHomes = useMemo(
+    () => (filterClientId ? clients.find((client) => client.id === filterClientId)?.homes ?? [] : []),
+    [clients, filterClientId],
+  )
+
+  const hasActiveFilters =
+    filterClientId !== '' ||
+    filterHomeId !== '' ||
+    filterEmployeeId !== '' ||
+    filterDateFrom !== '' ||
+    filterDateTo !== ''
+
+  const activeFiltersCount = [filterClientId, filterHomeId, filterEmployeeId, filterDateFrom, filterDateTo].filter(Boolean).length
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024)
+    check()
+    window.addEventListener('resize', check)
+
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  useEffect(() => {
+    const api = calendarRef.current?.getApi()
+    if (!api) return
+    api.changeView(isMobile ? 'listYear' : 'dayGridMonth')
+  }, [isMobile])
+
+  const getEffectiveRange = useCallback(
+    (rangeStart: string, rangeEnd: string) => {
+      const effectiveStart = filterDateFromRef.current ? new Date(filterDateFromRef.current).toISOString() : rangeStart
+      const effectiveEnd = filterDateToRef.current ? new Date(`${filterDateToRef.current}T23:59:59`).toISOString() : rangeEnd
+
+      return { start: effectiveStart, end: effectiveEnd }
+    },
+    [],
+  )
+
+  const refreshAppointments = useCallback(
+    async (
+      rangeStart: string,
+      rangeEnd: string,
+      opts?: {
+        clientId?: string
+        homeId?: string
+        employeeId?: string
+      },
+    ) => {
     try {
       setIsRefreshing(true)
       setErrorMessage(null)
 
-      const response = await fetch(`/api/appointments?start=${encodeURIComponent(rangeStart)}&end=${encodeURIComponent(rangeEnd)}`)
+      const params = new URLSearchParams()
+      params.set('start', rangeStart)
+      params.set('end', rangeEnd)
+      if (opts?.clientId) params.set('clientId', opts.clientId)
+      if (opts?.homeId) params.set('homeId', opts.homeId)
+      if (opts?.employeeId) params.set('employeeId', opts.employeeId)
+
+      const response = await fetch(`/api/appointments?${params.toString()}`)
 
       if (!response.ok) {
         throw new Error('Failed to load appointments')
@@ -147,16 +235,56 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
     } finally {
       setIsRefreshing(false)
     }
-  }
+    },
+    [],
+  )
 
-  function handleDatesSet(arg: DatesSetArg) {
+  const applyFilters = useCallback(() => {
+    const effectiveRange = getEffectiveRange(calendarRange.start, calendarRange.end)
+
+    void refreshAppointments(effectiveRange.start, effectiveRange.end, {
+      clientId: filterClientId || undefined,
+      homeId: filterHomeId || undefined,
+      employeeId: filterEmployeeId || undefined,
+    })
+  }, [calendarRange.end, calendarRange.start, filterClientId, filterEmployeeId, filterHomeId, getEffectiveRange, refreshAppointments])
+
+  const clearFilters = useCallback(() => {
+    setFilterClientId('')
+    setFilterHomeId('')
+    setFilterEmployeeId('')
+    setFilterDateFrom('')
+    setFilterDateTo('')
+    void refreshAppointments(calendarRange.start, calendarRange.end)
+  }, [calendarRange.end, calendarRange.start, refreshAppointments])
+
+  const handleDatesSet = useCallback((arg: DatesSetArg) => {
     const nextRange = {
       start: arg.start.toISOString(),
       end: arg.end.toISOString(),
     }
+
+    const rangeEnd = subDays(arg.end, 1)
+    const sameYear = arg.start.getFullYear() === rangeEnd.getFullYear()
+    const sameMonth = sameYear && arg.start.getMonth() === rangeEnd.getMonth()
+
+    if (sameMonth) {
+      setMobileTitle(`${format(arg.start, 'MMM d')}-${format(rangeEnd, 'd, yyyy')}`)
+    } else if (sameYear) {
+      setMobileTitle(`${format(arg.start, 'MMM d')} - ${format(rangeEnd, 'MMM d, yyyy')}`)
+    } else {
+      setMobileTitle(`${format(arg.start, 'MMM d, yyyy')} - ${format(rangeEnd, 'MMM d, yyyy')}`)
+    }
+
     setCalendarRange(nextRange)
-    void refreshAppointments(nextRange.start, nextRange.end)
-  }
+    const effectiveRange = getEffectiveRange(nextRange.start, nextRange.end)
+
+    void refreshAppointments(effectiveRange.start, effectiveRange.end, {
+      clientId: filterClientIdRef.current || undefined,
+      homeId: filterHomeIdRef.current || undefined,
+      employeeId: filterEmployeeIdRef.current || undefined,
+    })
+  }, [getEffectiveRange, refreshAppointments])
 
   function openCreateModal(start?: string, end?: string) {
     setSelectedAppointment(null)
@@ -213,7 +341,12 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
         throw new Error('Failed to reschedule appointment')
       }
 
-      await refreshAppointments(calendarRange.start, calendarRange.end)
+      const effectiveRange = getEffectiveRange(calendarRange.start, calendarRange.end)
+      await refreshAppointments(effectiveRange.start, effectiveRange.end, {
+        clientId: filterClientId || undefined,
+        homeId: filterHomeId || undefined,
+        employeeId: filterEmployeeId || undefined,
+      })
     } catch (error) {
       console.error('Failed to reschedule appointment', error)
       arg.revert()
@@ -224,7 +357,7 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Admin Calendar</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Calendar</h1>
         <Button className="w-full sm:w-auto" onClick={() => openCreateModal()}>
           New Appointment
         </Button>
@@ -235,6 +368,190 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
       ) : null}
 
       <Card className="p-3 sm:p-4">
+        {isMobile ? (
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              onClick={() => setIsMobileFiltersOpen((open) => !open)}
+              className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Filters
+              {activeFiltersCount > 0 ? (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
+                  {activeFiltersCount}
+                </span>
+              ) : null}
+            </button>
+
+            {activeFiltersCount > 0 && !isMobileFiltersOpen ? (
+              <button
+                onClick={clearFilters}
+                className="min-h-11 rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-500 hover:bg-slate-50"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isMobile && isMobileFiltersOpen ? (
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-col gap-3">
+              <SearchableSelect
+                label="Client"
+                options={clients.map((c) => ({ id: c.id, label: c.full_name }))}
+                value={filterClientId}
+                onChange={(id) => {
+                  setFilterClientId(id)
+                  setFilterHomeId('')
+                }}
+                placeholder="All clients"
+              />
+
+              <SearchableSelect
+                label="Home"
+                options={availableHomes.map((home) => ({ id: home.id, label: home.label || home.street }))}
+                value={filterHomeId}
+                onChange={(id) => setFilterHomeId(id)}
+                placeholder="All homes"
+                disabled={filterClientId === ''}
+              />
+
+              <SearchableSelect
+                label="Employee"
+                options={employees.map((e) => ({ id: e.id, label: e.full_name }))}
+                value={filterEmployeeId}
+                onChange={(id) => setFilterEmployeeId(id)}
+                placeholder="All employees"
+              />
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-slate-600">Date from</span>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(event) => setFilterDateFrom(event.target.value)}
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-slate-600">Date to</span>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(event) => setFilterDateTo(event.target.value)}
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                />
+              </label>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    applyFilters()
+                    setIsMobileFiltersOpen(false)
+                  }}
+                >
+                  Apply
+                </Button>
+                {activeFiltersCount > 0 ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      clearFilters()
+                      setIsMobileFiltersOpen(false)
+                    }}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {!isMobile ? (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex max-w-[180px] flex-1 flex-col gap-1">
+              <SearchableSelect
+                label="Client"
+                options={clients.map((c) => ({ id: c.id, label: c.full_name }))}
+                value={filterClientId}
+                onChange={(id) => {
+                  setFilterClientId(id)
+                  setFilterHomeId('')
+                }}
+                placeholder="All clients"
+              />
+            </div>
+
+            <div className="flex max-w-[180px] flex-1 flex-col gap-1">
+              <SearchableSelect
+                label="Home"
+                options={availableHomes.map((home) => ({ id: home.id, label: home.label || home.street }))}
+                value={filterHomeId}
+                onChange={(id) => setFilterHomeId(id)}
+                placeholder="All homes"
+                disabled={filterClientId === ''}
+              />
+            </div>
+
+            <div className="flex max-w-[180px] flex-1 flex-col gap-1">
+              <SearchableSelect
+                label="Employee"
+                options={employees.map((e) => ({ id: e.id, label: e.full_name }))}
+                value={filterEmployeeId}
+                onChange={(id) => setFilterEmployeeId(id)}
+                placeholder="All employees"
+              />
+            </div>
+
+            <label className="flex max-w-[160px] flex-1 flex-col gap-1">
+              <span className="text-xs font-medium text-slate-600">Date from</span>
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(event) => setFilterDateFrom(event.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              />
+            </label>
+
+            <label className="flex max-w-[160px] flex-1 flex-col gap-1">
+              <span className="text-xs font-medium text-slate-600">Date to</span>
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(event) => setFilterDateTo(event.target.value)}
+                className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+              />
+            </label>
+
+            <div className="flex items-center gap-2">
+              <Button onClick={applyFilters}>Apply</Button>
+              {hasActiveFilters ? (
+                <Button variant="secondary" onClick={clearFilters}>
+                  Clear
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        ) : null}
+
         <div className="mb-3 flex items-center justify-end">
           {isRefreshing ? (
             <div className="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -245,12 +562,20 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
         </div>
 
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          headerToolbar={{
-            left: 'today prev,next',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listWeek',
+          initialView={isMobile ? 'listYear' : 'dayGridMonth'}
+          headerToolbar={
+            isMobile
+              ? false
+              : {
+                  left: 'today prev,next',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,listWeek,listYear',
+                }
+          }
+          views={{
+            listYear: { buttonText: 'All' },
           }}
           nowIndicator
           allDaySlot={false}
@@ -270,18 +595,6 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
             void handleEventDrop(arg)
           }}
           datesSet={handleDatesSet}
-          windowResize={(arg) => {
-            const mobile = arg.view.calendar.el.clientWidth < 1024
-            setIsMobile(mobile)
-            arg.view.calendar.changeView(mobile ? 'listWeek' : 'timeGridWeek')
-          }}
-          viewDidMount={(arg) => {
-            const mobile = window.innerWidth < 1024
-            setIsMobile(mobile)
-            if (mobile && arg.view.type !== 'listWeek') {
-              arg.view.calendar.changeView('listWeek')
-            }
-          }}
           dayMaxEvents
           eventClassNames="cursor-pointer"
         />
@@ -294,10 +607,20 @@ export function AdminCalendar({ initialAppointments }: AdminCalendarProps) {
         defaultStart={defaultStart}
         defaultEnd={defaultEnd}
         onSaved={async () => {
-          await refreshAppointments(calendarRange.start, calendarRange.end)
+          const effectiveRange = getEffectiveRange(calendarRange.start, calendarRange.end)
+          await refreshAppointments(effectiveRange.start, effectiveRange.end, {
+            clientId: filterClientId || undefined,
+            homeId: filterHomeId || undefined,
+            employeeId: filterEmployeeId || undefined,
+          })
         }}
         onDeleted={async () => {
-          await refreshAppointments(calendarRange.start, calendarRange.end)
+          const effectiveRange = getEffectiveRange(calendarRange.start, calendarRange.end)
+          await refreshAppointments(effectiveRange.start, effectiveRange.end, {
+            clientId: filterClientId || undefined,
+            homeId: filterHomeId || undefined,
+            employeeId: filterEmployeeId || undefined,
+          })
         }}
       />
     </div>

@@ -1,4 +1,4 @@
-import { JobsTable } from '@/components/admin/JobsTable'
+import { JobsTable } from '@/components/admin/job/JobsTable'
 import { createClient } from '@/lib/supabase/server'
 import type { Job } from '@/types'
 

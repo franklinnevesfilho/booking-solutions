@@ -126,6 +126,8 @@ export function AppointmentDetailModal({ isOpen, onClose, appointment }: Appoint
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client</p>
               <p className="mt-1 text-sm font-medium text-slate-900">{appointment.client?.full_name ?? 'No client selected'}</p>
+              {appointment.client?.phone ? <p className="mt-1 text-sm text-slate-700">Phone: {appointment.client.phone}</p> : null}
+              {appointment.client?.email ? <p className="mt-1 text-sm text-slate-700">Email: {appointment.client.email}</p> : null}
               <p className="mt-1 text-sm text-slate-700">
                 {appointment.home
                   ? [

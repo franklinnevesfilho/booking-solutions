@@ -44,47 +44,6 @@ export type Database = {
           },
         ]
       }
-      appointment_invoices: {
-        Row: {
-          amount_charged: number
-          appointment_id: string
-          created_at: string
-          discount_amount: number
-          discount_reason: string | null
-          id: string
-          is_paid: boolean
-          updated_at: string
-        }
-        Insert: {
-          amount_charged: number
-          appointment_id: string
-          created_at?: string
-          discount_amount?: number
-          discount_reason?: string | null
-          id?: string
-          is_paid?: boolean
-          updated_at?: string
-        }
-        Update: {
-          amount_charged?: number
-          appointment_id?: string
-          created_at?: string
-          discount_amount?: number
-          discount_reason?: string | null
-          id?: string
-          is_paid?: boolean
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "appointment_invoices_appointment_id_fkey"
-            columns: ["appointment_id"]
-            isOneToOne: false
-            referencedRelation: "appointments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       appointments: {
         Row: {
           client_id: string | null
@@ -146,7 +105,7 @@ export type Database = {
             foreignKeyName: "appointments_home_id_fkey"
             columns: ["home_id"]
             isOneToOne: false
-            referencedRelation: "client_homes"
+            referencedRelation: "homes"
             referencedColumns: ["id"]
           },
           {
@@ -158,7 +117,40 @@ export type Database = {
           },
         ]
       }
-      client_homes: {
+      clients: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      homes: {
         Row: {
           city: string
           client_id: string
@@ -208,38 +200,46 @@ export type Database = {
           },
         ]
       }
-      clients: {
+      invoices: {
         Row: {
-          address: string | null
+          amount_charged: number
+          appointment_id: string
           created_at: string
-          email: string | null
-          full_name: string
+          discount_amount: number
+          discount_reason: string | null
           id: string
-          notes: string | null
-          phone: string | null
+          is_paid: boolean
           updated_at: string
         }
         Insert: {
-          address?: string | null
+          amount_charged: number
+          appointment_id: string
           created_at?: string
-          email?: string | null
-          full_name: string
+          discount_amount?: number
+          discount_reason?: string | null
           id?: string
-          notes?: string | null
-          phone?: string | null
+          is_paid?: boolean
           updated_at?: string
         }
         Update: {
-          address?: string | null
+          amount_charged?: number
+          appointment_id?: string
           created_at?: string
-          email?: string | null
-          full_name?: string
+          discount_amount?: number
+          discount_reason?: string | null
           id?: string
-          notes?: string | null
-          phone?: string | null
+          is_paid?: boolean
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointment_invoices_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       jobs: {
         Row: {

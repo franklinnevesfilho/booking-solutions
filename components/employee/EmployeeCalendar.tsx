@@ -5,11 +5,12 @@ import listPlugin from '@fullcalendar/list'
 import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import type { DatesSetArg, EventClickArg } from '@fullcalendar/core'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { AppointmentWithDetails } from '@/types'
 
 import { AppointmentDetailModal } from '@/components/employee/AppointmentDetailModal'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -21,6 +22,8 @@ type AppointmentApiShape = {
   id: string
   title: string
   client_id: string | null
+  home_id: string | null
+  job_id: string | null
   start_time: string
   end_time: string
   status: 'scheduled' | 'completed' | 'cancelled'
@@ -39,6 +42,24 @@ type AppointmentApiShape = {
     notes?: string | null
     created_at?: string
     updated_at?: string
+  } | null
+  homes?: {
+    id: string
+    client_id?: string
+    label: string | null
+    street: string | null
+    city: string | null
+    state: string | null
+    postal_code: string | null
+    country?: string | null
+    is_primary: boolean
+    created_at?: string
+    updated_at?: string
+  } | null
+  jobs?: {
+    id: string
+    name: string
+    description: string | null
   } | null
   appointment_employees?: Array<{
     employee_id: string
@@ -66,6 +87,8 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
   return {
     id: row.id,
     client_id: row.client_id,
+    home_id: row.home_id,
+    job_id: row.job_id,
     title: row.title,
     start_time: row.start_time,
     end_time: row.end_time,
@@ -88,6 +111,29 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
           updated_at: row.clients.updated_at ?? '',
         }
       : null,
+    home: row.homes
+      ? {
+          id: row.homes.id,
+          client_id: row.homes.client_id ?? '',
+          label: row.homes.label,
+          street: row.homes.street ?? '',
+          city: row.homes.city ?? '',
+          state: row.homes.state ?? '',
+          postal_code: row.homes.postal_code ?? '',
+          country: row.homes.country ?? '',
+          is_primary: row.homes.is_primary,
+          created_at: row.homes.created_at ?? '',
+          updated_at: row.homes.updated_at ?? '',
+        }
+      : null,
+    job: row.jobs
+      ? ({
+          id: row.jobs.id,
+          name: row.jobs.name,
+          description: row.jobs.description ?? null,
+        } as AppointmentWithDetails['job'])
+      : null,
+    invoice: null,
     employees:
       row.appointment_employees
         ?.map((assignment) => assignment.profiles)
@@ -106,21 +152,47 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
 
 export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps) {
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>(initialAppointments)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all')
+  const [clientQuery, setClientQuery] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false
-    }
+  const [isMobile, setIsMobile] = useState(false)
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false)
+  const calendarRef = useRef<FullCalendar | null>(null)
 
-    return window.innerWidth < 1024
-  })
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  useEffect(() => {
+    const api = calendarRef.current?.getApi()
+    if (!api) return
+    api.changeView(isMobile ? 'listYear' : 'dayGridMonth')
+  }, [isMobile])
+
+  const activeFiltersCount = [statusFilter !== 'all' ? 1 : 0, clientQuery !== '' ? 1 : 0].reduce((a, b) => a + b, 0)
+
+  const filteredAppointments = useMemo(
+    () =>
+      appointments.filter((appointment) => {
+        const statusMatch = statusFilter === 'all' || appointment.status === statusFilter
+        const clientMatch =
+          clientQuery === '' ||
+          appointment.client?.full_name?.toLowerCase().includes(clientQuery.toLowerCase())
+
+        return statusMatch && clientMatch
+      }),
+    [appointments, clientQuery, statusFilter],
+  )
 
   const events = useMemo(
     () =>
-      appointments.map((appointment) => ({
+      filteredAppointments.map((appointment) => ({
         id: appointment.id,
         title: `${appointment.title}${appointment.client ? ` - ${appointment.client.full_name}` : ''}`,
         start: appointment.start_time,
@@ -130,7 +202,7 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
           appointment,
         },
       })),
-    [appointments],
+    [filteredAppointments],
   )
 
   async function refreshAppointments(start: string, end: string) {
@@ -181,6 +253,123 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
       ) : null}
 
       <Card className="p-3 sm:p-4">
+        {isMobile ? (
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              onClick={() => setIsMobileFiltersOpen((open) => !open)}
+              className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Filters
+              {activeFiltersCount > 0 ? (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
+                  {activeFiltersCount}
+                </span>
+              ) : null}
+            </button>
+            {activeFiltersCount > 0 && !isMobileFiltersOpen ? (
+              <button
+                onClick={() => {
+                  setStatusFilter('all')
+                  setClientQuery('')
+                }}
+                className="min-h-11 rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-500 hover:bg-slate-50"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isMobile && isMobileFiltersOpen ? (
+          <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-slate-600">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as 'all' | 'scheduled' | 'completed' | 'cancelled')}
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                >
+                  <option value="all">All</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-slate-600">Client</span>
+                <input
+                  type="text"
+                  value={clientQuery}
+                  onChange={(event) => setClientQuery(event.target.value)}
+                  placeholder="Search by client..."
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+                />
+              </label>
+              <div className="flex gap-2 pt-1">
+                <Button className="flex-1" onClick={() => setIsMobileFiltersOpen(false)}>
+                  Apply
+                </Button>
+                {activeFiltersCount > 0 ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setStatusFilter('all')
+                      setClientQuery('')
+                      setIsMobileFiltersOpen(false)
+                    }}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {!isMobile ? (
+          <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex min-w-[140px] flex-1 flex-col gap-1">
+                <span className="text-xs font-medium text-slate-600">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as 'all' | 'scheduled' | 'completed' | 'cancelled')}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                >
+                  <option value="all">All</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </label>
+              <label className="flex min-w-[200px] flex-[2] flex-col gap-1">
+                <span className="text-xs font-medium text-slate-600">Client</span>
+                <input
+                  type="text"
+                  value={clientQuery}
+                  onChange={(event) => setClientQuery(event.target.value)}
+                  placeholder="Search by client..."
+                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
+                />
+              </label>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mb-3 flex min-h-11 items-center justify-end text-sm text-slate-600">
           {isRefreshing ? (
             <span className="inline-flex items-center gap-2">
@@ -190,45 +379,45 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
           ) : null}
         </div>
 
-        {appointments.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
-            <p className="text-base font-semibold text-slate-900">No appointments scheduled</p>
-            <p className="mt-1 text-sm text-slate-600">Check back later.</p>
-          </div>
-        ) : (
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
-            initialView={isMobile ? 'listWeek' : 'timeGridWeek'}
-            headerToolbar={{
-              left: 'today prev,next',
-              center: 'title',
-              right: 'timeGridWeek,listWeek',
-            }}
-            allDaySlot={false}
-            editable={false}
-            selectable={false}
-            height="auto"
-            eventTimeFormat={{
-              hour: 'numeric',
-              minute: '2-digit',
-              meridiem: 'short',
-            }}
-            events={events}
-            eventClick={handleEventClick}
-            datesSet={handleDatesSet}
-            viewDidMount={(arg) => {
-              const mobile = window.innerWidth < 1024
-              setIsMobile(mobile)
-              arg.view.calendar.changeView(mobile ? 'listWeek' : 'timeGridWeek')
-            }}
-            windowResize={(arg) => {
-              const mobile = arg.view.calendar.el.clientWidth < 1024
-              setIsMobile(mobile)
-              arg.view.calendar.changeView(mobile ? 'listWeek' : 'timeGridWeek')
-            }}
-            eventClassNames="cursor-pointer"
-          />
-        )}
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
+          initialView={isMobile ? 'listYear' : 'dayGridMonth'}
+          headerToolbar={
+            isMobile
+              ? false
+              : {
+                  left: 'today prev,next',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,listWeek,listYear',
+                }
+          }
+          views={{
+            listYear: { buttonText: 'All' },
+          }}
+          noEventsContent={
+            <div className="px-4 py-8 text-center">
+              <p className="text-sm text-slate-500">
+                {appointments.length === 0 ? 'No appointments scheduled. Check back later.' : 'No appointments match your filters.'}
+              </p>
+            </div>
+          }
+          nowIndicator
+          allDaySlot={false}
+          editable={false}
+          selectable={false}
+          height="auto"
+          eventTimeFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short',
+          }}
+          events={events}
+          eventClick={handleEventClick}
+          datesSet={handleDatesSet}
+          dayMaxEvents
+          eventClassNames="cursor-pointer"
+        />
       </Card>
 
       <AppointmentDetailModal

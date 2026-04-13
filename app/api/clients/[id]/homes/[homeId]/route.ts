@@ -84,7 +84,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     console.log('Unsetting other primary homes for client:', id, 'excluding home:', homeId)
 
     const { error: unsetPrimaryError } = await supabase
-      .from('client_homes')
+      .from('homes')
       .update({ is_primary: false })
       .eq('client_id', id)
       .neq('id', homeId)
@@ -102,7 +102,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   }
 
   const { data, error } = await supabase
-    .from('client_homes')
+    .from('homes')
     .update(parsed.data)
     .eq('id', homeId)
     .eq('client_id', id)
@@ -176,7 +176,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   }
 
   const { error } = await supabase
-    .from('client_homes')
+    .from('homes')
     .delete()
     .eq('id', homeId)
     .eq('client_id', id)

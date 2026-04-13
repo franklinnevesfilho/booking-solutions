@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import type { Job } from '@/types'
 
-import { JobModal } from '@/components/admin/JobModal'
+import { JobModal } from './JobModal'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { cn } from '@/lib/utils'
 
 type JobsTableProps = {
@@ -19,6 +20,12 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
   const [activeJob, setActiveJob] = useState<Job | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [nameFilter, setNameFilter] = useState('')
+
+  const filteredJobs = useMemo(() => {
+    if (!nameFilter) return jobs
+    return jobs.filter((j) => j.id === nameFilter)
+  }, [jobs, nameFilter])
 
   function openCreateModal() {
     setActiveJob(null)
@@ -71,9 +78,19 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
         }
       />
 
+      <Card className="mb-4">
+        <SearchableSelect
+          label="Search job"
+          options={jobs.map((j) => ({ id: j.id, label: j.name }))}
+          value={nameFilter}
+          onChange={(id) => setNameFilter(id)}
+          placeholder="All jobs"
+        />
+      </Card>
+
       {/* Mobile cards */}
       <div className="space-y-3 lg:hidden">
-        {jobs.map((job) => (
+        {filteredJobs.map((job) => (
           <Card key={job.id} className="space-y-3">
             <div>
               <p className="text-base font-semibold text-slate-900">{job.name}</p>
@@ -106,7 +123,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
           </Card>
         ))}
 
-        {jobs.length === 0 ? (
+        {filteredJobs.length === 0 ? (
           <Card>
             <p className="text-sm text-slate-600">No jobs found.</p>
           </Card>
@@ -127,7 +144,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {jobs.map((job) => (
+              {filteredJobs.map((job) => (
                 <tr key={job.id}>
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">{job.name}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{job.description ?? '—'}</td>
@@ -164,7 +181,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
             </tbody>
           </table>
 
-          {jobs.length === 0 ? <p className="px-4 py-5 text-sm text-slate-600">No jobs found.</p> : null}
+          {filteredJobs.length === 0 ? <p className="px-4 py-5 text-sm text-slate-600">No jobs found.</p> : null}
         </div>
       </Card>
 

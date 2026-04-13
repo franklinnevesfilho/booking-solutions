@@ -1,4 +1,4 @@
-import { EmployeesTable } from '@/components/admin/EmployeesTable'
+import { EmployeesTable } from '@/components/admin/employee/EmployeesTable'
 import { createClient } from '@/lib/supabase/server'
 
 type EmployeeRow = {

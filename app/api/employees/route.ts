@@ -42,11 +42,16 @@ export async function GET(request: Request) {
     return forbidden()
   }
 
+  const requestUrl = new URL(request.url)
+  const assignable = requestUrl.searchParams.get('assignable') === 'true'
+
   const supabase = await createClient()
+  const roles = assignable ? ['employee', 'admin'] : ['employee']
+
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, phone, is_active, created_at')
-    .eq('role', 'employee')
+    .select('id, full_name, phone, role, is_active, created_at, updated_at')
+    .in('role', roles)
     .order('created_at', { ascending: false })
 
   if (error) {

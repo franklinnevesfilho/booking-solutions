@@ -9,17 +9,10 @@ type MobileHeaderProps = {
   fullName: string
 }
 
-const pageTitles: Record<string, string> = {
-  '/admin': 'Dashboard',
-  '/admin/clients': 'Clients',
-  '/admin/employees': 'Employees',
-}
-
 export function MobileHeader({ fullName }: MobileHeaderProps) {
   const pathname = usePathname()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
-  const title = pageTitles[pathname] ?? 'Admin'
 
   useEffect(() => {
     setIsDrawerOpen(false)
@@ -44,7 +37,6 @@ export function MobileHeader({ fullName }: MobileHeaderProps) {
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-brand-700">CleanSchedule</p>
-            <p className="text-base font-semibold text-slate-900">{title}</p>
           </div>
           <button
             type="button"

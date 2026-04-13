@@ -92,7 +92,7 @@ type AppointmentListRow = Database['public']['Tables']['appointments']['Row'] & 
     created_at: string
     updated_at: string
   } | null
-  client_homes: ClientHome | null
+  homes: ClientHome | null
   jobs: {
     id: string
     name: string
@@ -180,16 +180,43 @@ export async function GET(request: Request) {
   const start = requestUrl.searchParams.get('start')
   const end = requestUrl.searchParams.get('end')
   const employeeId = requestUrl.searchParams.get('employeeId')
+  const clientId = requestUrl.searchParams.get('clientId')
+  const homeId = requestUrl.searchParams.get('homeId')
 
-  console.log('Query params:', { start, end, employeeId })
+  console.log('Query params:', { start, end, employeeId, clientId, homeId })
 
   if ((start && Number.isNaN(Date.parse(start))) || (end && Number.isNaN(Date.parse(end)))) {
     console.warn('Invalid date params:', { start, end })
     return badRequest('Invalid start or end date')
   }
 
+  if (clientId) {
+    const parsedClientId = z.string().uuid().safeParse(clientId)
+    if (!parsedClientId.success) {
+      console.warn('Invalid clientId param:', { clientId })
+      return badRequest('Invalid clientId')
+    }
+  }
+
+  if (homeId) {
+    const parsedHomeId = z.string().uuid().safeParse(homeId)
+    if (!parsedHomeId.success) {
+      console.warn('Invalid homeId param:', { homeId })
+      return badRequest('Invalid homeId')
+    }
+  }
+
   if (employeeId && session.role !== 'admin') {
     console.warn('Forbidden — non-admin requested employeeId filter:', { employeeId, role: session.role })
+    return forbidden()
+  }
+
+  if ((clientId || homeId) && session.role !== 'admin') {
+    console.warn('Forbidden — non-admin requested client/home filter:', {
+      clientId,
+      homeId,
+      role: session.role,
+    })
     return forbidden()
   }
 
@@ -227,11 +254,36 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('appointments')
-      .select('*, clients(*), client_homes!home_id(*), jobs!job_id(*)')
+      .select('*, clients(*), homes!home_id(*), jobs!job_id(*)')
       .order('start_time', { ascending: true })
 
     if (start) query = query.gte('start_time', start)
     if (end) query = query.lte('start_time', end)
+    
+    // With this:
+    if (clientId) {
+      const { data: homes, error: homesError } = await supabase
+        .from('homes')
+        .select('id')
+        .eq('client_id', clientId)
+    
+      if (homesError) {
+        console.error('Failed to fetch client homes for filter:', homesError)
+        return serverError()
+      }
+    
+      const homeIds = (homes ?? []).map((h) => h.id)
+    
+      if (homeId) {
+        // A specific home is selected — homeId filter below handles it, skip the OR
+        query = query.eq('home_id', homeId)
+      } else if (homeIds.length > 0) {
+        query = query.or(`client_id.eq.${clientId},home_id.in.(${homeIds.join(',')})`)
+      } else {
+        query = query.eq('client_id', clientId)
+      }
+    }
+
     if (appointmentIdsFilter) query = query.in('id', appointmentIdsFilter)
 
     const { data, error } = await query
@@ -242,7 +294,7 @@ export async function GET(request: Request) {
         code: error.code,
         details: error.details,
         hint: error.hint,
-        filters: { start, end, employeeId },
+        filters: { start, end, employeeId, clientId, homeId },
       })
       return serverError()
     }
@@ -296,7 +348,7 @@ export async function POST(request: Request) {
     console.log('Verifying home belongs to client:', { homeId: input.home_id, clientId: input.client_id })
 
     const { data: homeCheck, error: homeCheckError } = await supabase
-      .from('client_homes')
+      .from('homes')
       .select('client_id')
       .eq('id', input.home_id)
       .single()
@@ -356,7 +408,7 @@ export async function POST(request: Request) {
       if (input.invoice) {
         console.log('Creating invoice for appointment:', appointment.id)
 
-        const { error: invoiceError } = await supabase.from('appointment_invoices').insert({
+        const { error: invoiceError } = await supabase.from('invoices').insert({
           appointment_id: appointment.id,
           amount_charged: input.invoice.amount_charged,
           discount_amount: input.invoice.discount_amount ?? 0,
@@ -379,6 +431,7 @@ export async function POST(request: Request) {
       if (employeeIds.length > 0) {
         console.log('Assigning employees to appointment:', { appointmentId: appointment.id, employeeIds })
 
+        // Assignment accepts any valid profiles.id (admin or employee).
         const { error: assignmentError } = await supabase.from('appointment_employees').insert(
           employeeIds.map((employeeId) => ({
             appointment_id: appointment.id,
@@ -450,7 +503,7 @@ export async function POST(request: Request) {
     if (input.invoice) {
       console.log('Creating invoice for master appointment:', master.id)
 
-      const { error: invoiceError } = await supabase.from('appointment_invoices').insert({
+      const { error: invoiceError } = await supabase.from('invoices').insert({
         appointment_id: master.id,
         amount_charged: input.invoice.amount_charged,
         discount_amount: input.invoice.discount_amount ?? 0,
@@ -529,6 +582,7 @@ export async function POST(request: Request) {
         instanceCount: createdInstances.length,
       })
 
+      // Assignment accepts any valid profiles.id (admin or employee).
       const assignmentRows = createdInstances.flatMap((appointment) =>
         employeeIds.map((employeeId) => ({
           appointment_id: appointment.id,

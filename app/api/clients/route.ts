@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createClient()
-  const { data, error } = await supabase.from('clients').select('*, client_homes(*)').order('full_name', { ascending: true })
+  const { data, error } = await supabase.from('clients').select('*, homes(*)').order('full_name', { ascending: true })
 
   if (error) {
     console.error('Failed to fetch clients', error)

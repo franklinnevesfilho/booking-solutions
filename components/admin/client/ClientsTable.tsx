@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 
 import type { Client, ClientWithHomes } from '@/types'
 
-import { ClientModal } from '@/components/admin/ClientModal'
+import { ClientModal } from '@/components/admin/client/ClientModal'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -78,10 +78,10 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
         const fresh = (await response.json()) as ClientWithHomes[]
         setClients(fresh.sort((a, b) => a.full_name.localeCompare(b.full_name)))
       } else {
-        upsertClient({ ...savedClient, client_homes: [] })
+        upsertClient({ ...savedClient, homes: [] })
       }
     } catch {
-      upsertClient({ ...savedClient, client_homes: [] })
+      upsertClient({ ...savedClient, homes: [] })
     }
   }
 
@@ -113,7 +113,7 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
               <p className="text-sm text-slate-600">{client.phone || 'No phone'}</p>
               <p className="text-sm text-slate-600">{client.email || 'No email'}</p>
               {(() => {
-                const primary = client.client_homes?.find((h) => h.is_primary)
+                const primary = client.homes?.find((h) => h.is_primary)
                 return primary ? <p className="text-sm text-slate-600">{primary.street}{primary.city ? `, ${primary.city}` : ''}</p> : null
               })()}
             </div>
@@ -166,7 +166,7 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
                   <td className="px-4 py-3 text-sm text-slate-600">{client.email || '-'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {(() => {
-                      const primary = client.client_homes?.find((h) => h.is_primary)
+                      const primary = client.homes?.find((h) => h.is_primary)
                       return primary ? `${primary.street}${primary.city ? `, ${primary.city}` : ''}` : '-'
                     })()}
                   </td>
