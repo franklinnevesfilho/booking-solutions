@@ -8,7 +8,7 @@ import { z } from 'zod'
 
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { createClient } from '@/lib/supabase/client'
 
 const setPasswordSchema = z
@@ -102,18 +102,16 @@ export default function SetPasswordPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Input
+        <PasswordInput
           label="Password"
-          type="password"
           autoComplete="new-password"
           error={errors.password?.message}
           disabled={isCheckingAuth}
           {...register('password')}
         />
 
-        <Input
+        <PasswordInput
           label="Confirm password"
-          type="password"
           autoComplete="new-password"
           error={errors.confirmPassword?.message}
           disabled={isCheckingAuth}

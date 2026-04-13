@@ -124,11 +124,6 @@ const navItems: NavItem[] = [
     href: '/admin/jobs',
     icon: BriefcaseIcon,
   },
-  {
-    label: 'Profile',
-    href: '/admin/profile',
-    icon: UserCircleIcon,
-  },
 ]
 
 export function AdminSidebar({ fullName, onClose }: AdminSidebarProps) {
@@ -197,10 +192,18 @@ export function AdminSidebar({ fullName, onClose }: AdminSidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-slate-200 p-3 lg:px-0 lg:pt-4">
-        <p className="mb-3 truncate px-1 text-sm font-medium text-slate-600">{fullName || 'Admin User'}</p>
+      <div className="flex flex-col border-t gap-3 border-slate-200 p-3 lg:px-0 lg:pt-4">
         <Button
-          variant="secondary"
+          variant="outline"
+          className="w-full lg:w-full"
+          onClick={() => router.push('/admin/profile')}
+          aria-label="View profile"
+          icon={UserCircleIcon}
+        >
+          {fullName}
+        </Button>
+        <Button
+          variant="danger"
           className="w-full lg:w-full"
           isLoading={isSigningOut}
           onClick={handleSignOut}

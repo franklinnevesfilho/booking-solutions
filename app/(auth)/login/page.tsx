@@ -6,6 +6,7 @@ import { useActionState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { signIn, type SignInState } from './actions'
 
 function SubmitButton() {
@@ -39,9 +40,8 @@ export default function LoginPage() {
           placeholder="you@company.com"
           required
         />
-        <Input
+        <PasswordInput
           label="Password"
-          type="password"
           name="password"
           autoComplete="current-password"
           required

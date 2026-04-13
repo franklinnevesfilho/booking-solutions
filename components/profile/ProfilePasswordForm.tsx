@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { createClient } from '@/lib/supabase/client'
 
 const profilePasswordSchema = z
@@ -81,25 +81,22 @@ export function ProfilePasswordForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <Input
+      <PasswordInput
         label="Current password"
-        type="password"
         autoComplete="current-password"
         error={errors.currentPassword?.message}
         {...register('currentPassword')}
       />
 
-      <Input
+      <PasswordInput
         label="New Password"
-        type="password"
         autoComplete="new-password"
         error={errors.newPassword?.message}
         {...register('newPassword')}
       />
 
-      <Input
+      <PasswordInput
         label="Confirm New Password"
-        type="password"
         autoComplete="new-password"
         error={errors.confirmPassword?.message}
         {...register('confirmPassword')}

@@ -354,7 +354,7 @@ export function AdminMyScheduleCalendar({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Calendar</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Schedule</h1>
         <Button className="w-full sm:w-auto" onClick={() => openCreateModal()}>
           New Appointment
         </Button>

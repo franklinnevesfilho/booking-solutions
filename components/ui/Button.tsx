@@ -4,10 +4,11 @@ import { cn } from '@/lib/utils'
 
 import { Spinner } from './Spinner'
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost'
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
+  icon?: (props: { className?: string }) => React.ReactElement
   isLoading?: boolean
 }
 
@@ -16,6 +17,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200 focus-visible:ring-slate-400',
   danger: 'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500',
   ghost: 'bg-transparent text-slate-700 hover:bg-slate-100 focus-visible:ring-slate-400',
+  outline: 'bg-transparent border border-slate-300 text-slate-700 hover:bg-slate-100 focus-visible:ring-slate-400',
 }
 
 export function Button({
@@ -25,6 +27,7 @@ export function Button({
   isLoading = false,
   disabled,
   type = 'button',
+  icon: Icon,
   ...props
 }: ButtonProps) {
   return (
@@ -38,7 +41,7 @@ export function Button({
       )}
       {...props}
     >
-      {isLoading ? <Spinner className="h-4 w-4" /> : null}
+      {isLoading ? <Spinner className="h-4 w-4" /> : Icon ? <Icon className="h-4 w-4" /> : null}
       <span>{children}</span>
     </button>
   )

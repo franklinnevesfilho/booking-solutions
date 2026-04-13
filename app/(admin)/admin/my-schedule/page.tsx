@@ -56,7 +56,6 @@ export default async function AdminMySchedulePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="My Schedule" />
       <AdminMyScheduleCalendar
         initialAppointments={appointments}
         clients={(clientsData ?? []) as ClientWithHomes[]}

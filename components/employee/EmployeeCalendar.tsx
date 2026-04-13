@@ -12,6 +12,7 @@ import type { AppointmentWithDetails } from '@/types'
 import { AppointmentDetailModal } from '@/components/employee/AppointmentDetailModal'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Select } from '@/components/ui/Select'
 import { Spinner } from '@/components/ui/Spinner'
 
 type EmployeeCalendarProps = {
@@ -296,19 +297,19 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
         {isMobile && isMobileFiltersOpen ? (
           <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-slate-600">Status</span>
-                <select
+              <div className="flex flex-col gap-1">
+                <Select
+                  label="Status"
                   value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as 'all' | 'scheduled' | 'completed' | 'cancelled')}
-                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                >
-                  <option value="all">All</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </label>
+                  onChange={(val) => setStatusFilter(val)}
+                  options={[
+                    { value: 'all', label: 'All' },
+                    { value: 'scheduled', label: 'Scheduled' },
+                    { value: 'completed', label: 'Completed' },
+                    { value: 'cancelled', label: 'Cancelled' },
+                  ]}
+                />
+              </div>
               <label className="flex flex-col gap-1">
                 <span className="text-xs font-medium text-slate-600">Client</span>
                 <input
@@ -319,11 +320,8 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
                   className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400"
                 />
               </label>
-              <div className="flex gap-2 pt-1">
-                <Button className="flex-1" onClick={() => setIsMobileFiltersOpen(false)}>
-                  Apply
-                </Button>
-                {activeFiltersCount > 0 ? (
+              {activeFiltersCount > 0 ? (
+                <div className="flex gap-2 pt-1">
                   <Button
                     variant="secondary"
                     onClick={() => {
@@ -334,8 +332,8 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
                   >
                     Clear
                   </Button>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -343,19 +341,19 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
         {!isMobile ? (
           <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex flex-wrap items-end gap-3">
-              <label className="flex min-w-[140px] flex-1 flex-col gap-1">
-                <span className="text-xs font-medium text-slate-600">Status</span>
-                <select
+              <div className="flex min-w-[140px] flex-1 flex-col">
+                <Select
+                  label="Status"
                   value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as 'all' | 'scheduled' | 'completed' | 'cancelled')}
-                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                >
-                  <option value="all">All</option>
-                  <option value="scheduled">Scheduled</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </label>
+                  onChange={(val) => setStatusFilter(val)}
+                  options={[
+                    { value: 'all', label: 'All' },
+                    { value: 'scheduled', label: 'Scheduled' },
+                    { value: 'completed', label: 'Completed' },
+                    { value: 'cancelled', label: 'Cancelled' },
+                  ]}
+                />
+              </div>
               <label className="flex min-w-[200px] flex-[2] flex-col gap-1">
                 <span className="text-xs font-medium text-slate-600">Client</span>
                 <input
@@ -370,7 +368,7 @@ export function EmployeeCalendar({ initialAppointments }: EmployeeCalendarProps)
           </div>
         ) : null}
 
-        <div className="mb-3 flex min-h-11 items-center justify-end text-sm text-slate-600">
+        <div className="mb-3 flex min-h-0 items-center justify-end text-sm text-slate-600">
           {isRefreshing ? (
             <span className="inline-flex items-center gap-2">
               <Spinner className="h-4 w-4" />
