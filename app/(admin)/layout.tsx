@@ -34,14 +34,14 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   const fullName = profile.full_name ?? 'Admin User'
 
   return (
-    <div className="min-h-screen bg-slate-100 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="h-screen overflow-hidden bg-slate-100 lg:grid lg:grid-cols-[260px_1fr]">
       <aside className="hidden border-r border-slate-200 bg-white p-4 lg:block">
         <AdminSidebar fullName={fullName} />
       </aside>
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex h-screen flex-col">
         <MobileHeader fullName={fullName} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   )

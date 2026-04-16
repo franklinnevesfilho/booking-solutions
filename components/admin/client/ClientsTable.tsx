@@ -86,7 +86,7 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
   }
 
   return (
-    <div>
+    <div className="flex h-full flex-col">
       <PageHeader
         title="Clients"
         action={
@@ -96,7 +96,7 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
         }
       />
 
-      <Card className="mb-4">
+      <Card className="mb-4 shrink-0">
         <Input
           label="Search clients"
           placeholder="Search by client name"
@@ -105,7 +105,8 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
         />
       </Card>
 
-      <div className="space-y-3 lg:hidden">
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="space-y-3 lg:hidden">
         {filteredClients.map((client) => (
           <Card key={client.id} className="space-y-3">
             <div>
@@ -144,12 +145,11 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
             <p className="text-sm text-slate-600">No clients found.</p>
           </Card>
         ) : null}
-      </div>
+        </div>
 
-      <Card className="hidden p-0 lg:block">
-        <div className="overflow-x-auto">
+        <Card className="hidden p-0 lg:block">
           <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Phone</th>
@@ -197,8 +197,8 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
           </table>
 
           {filteredClients.length === 0 ? <p className="px-4 py-5 text-sm text-slate-600">No clients found.</p> : null}
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <ClientModal
         isOpen={isModalOpen}
