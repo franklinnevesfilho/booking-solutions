@@ -91,7 +91,7 @@ export async function getSessionAndRole(request: Request): Promise<SessionRole |
   return {
     userId: user.id,
     role: profile.role,
-  }
+  } as SessionRole
 }
 
 /**

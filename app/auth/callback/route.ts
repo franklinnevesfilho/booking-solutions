@@ -1,14 +1,17 @@
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+const _supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const _supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!_supabaseUrl || !_supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export async function GET(request: Request) {
+const supabaseUrl: string = _supabaseUrl
+const supabaseAnonKey: string = _supabaseAnonKey
+
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as 'invite' | 'recovery' | 'signup' | 'magiclink' | null

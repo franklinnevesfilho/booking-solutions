@@ -10,9 +10,7 @@ const assignEmployeesSchema = z
   .strict()
 
 type RouteContext = {
-  params: {
-    id: string
-  }
+  params: Promise<{ id: string }>
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -24,7 +22,8 @@ function jsonResponse(data: unknown, status = 200): Response {
   })
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
+  const params = await context.params
   const session = await getSessionAndRole(request)
 
   if (!session || session.role !== 'admin') {

@@ -1,13 +1,7 @@
 import type { Metadata, Viewport } from 'next'
-import { Nunito } from 'next/font/google'
 import NextTopLoader from 'nextjs-toploader'
 
 import './globals.css'
-
-const nunito = Nunito({
-  subsets: ['latin'],
-  variable: '--font-nunito',
-})
 
 export const metadata: Metadata = {
   title: 'CleanSchedule',
@@ -26,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={nunito.variable}>
+    <html lang="en">
       <body className="font-sans antialiased">
         <NextTopLoader color="#15803d" showSpinner={false} />
         {children}
