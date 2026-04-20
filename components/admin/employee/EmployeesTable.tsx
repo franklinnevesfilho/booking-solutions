@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 import { EmployeeDeleteModal } from './EmployeeDeleteModal'
 import { EmployeeEditModal } from './EmployeeEditModal'
@@ -49,6 +50,7 @@ function EmployeeActionsMenu({
   onPasswordReset,
   onDelete,
 }: EmployeeActionsMenuProps) {
+  const t = useTranslations('employees')
   const [isOpen, setIsOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -125,7 +127,7 @@ function EmployeeActionsMenu({
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
-            Edit Details
+            {t('editDetails')}
           </button>
 
           <button
@@ -137,7 +139,7 @@ function EmployeeActionsMenu({
               <rect x="2" y="4" width="20" height="16" rx="2" />
               <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
             </svg>
-            Change Email
+            {t('changeEmailTitle')}
           </button>
 
           <div className="my-1 h-px bg-slate-100" />
@@ -156,7 +158,7 @@ function EmployeeActionsMenu({
                 <path d="M22 2 11 13" />
               </svg>
             )}
-            Resend Invite
+            {t('resendInvite')}
           </button>
 
           <button
@@ -174,7 +176,7 @@ function EmployeeActionsMenu({
                 <path d="M7 10V7a5 5 0 0 1 10 0v3" />
               </svg>
             )}
-            Reset Password
+            {t('resetPassword')}
           </button>
 
           <button
@@ -191,7 +193,7 @@ function EmployeeActionsMenu({
                 <line x1="12" y1="2" x2="12" y2="12" />
               </svg>
             )}
-            {employee.is_active ? 'Set Inactive' : 'Set Active'}
+            {employee.is_active ? t('setInactive') : t('setActive')}
           </button>
 
           <div className="my-1 h-px bg-slate-100" />
@@ -208,7 +210,7 @@ function EmployeeActionsMenu({
               <path d="M14 11v6" />
               <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
             </svg>
-            Delete Account
+            {t('deleteAccount')}
           </button>
         </div>
       ) : null}
@@ -216,17 +218,18 @@ function EmployeeActionsMenu({
   )
 }
 
-function StatusBadge({ active }: { active: boolean }) {
+function StatusBadge({ active, activeLabel, inactiveLabel }: { active: boolean; activeLabel: string; inactiveLabel: string }) {
   return (
     <span
       className={active ? 'inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200' : 'inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-300'}
     >
-      {active ? 'active' : 'inactive'}
+      {active ? activeLabel : inactiveLabel}
     </span>
   )
 }
 
 export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
+  const t = useTranslations('employees')
   const [employees, setEmployees] = useState(initialEmployees)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isUpdatingId, setIsUpdatingId] = useState<string | null>(null)
@@ -273,8 +276,8 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
     const desiredState = !employee.is_active
     const allowed = window.confirm(
       desiredState
-        ? `Set ${employee.full_name} as active?`
-        : `Set ${employee.full_name} as inactive?`,
+        ? t('confirmSetActive', { name: employee.full_name })
+        : t('confirmSetInactive', { name: employee.full_name }),
     )
 
     if (!allowed) {
@@ -309,7 +312,7 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
 
   async function resendInvite(employee: Employee) {
     const allowed = window.confirm(
-      `Resend invite email to ${employee.full_name}?`,
+      t('confirmResendInvite', { name: employee.full_name }),
     )
 
     if (!allowed) {
@@ -327,17 +330,17 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
         throw new Error('Failed to resend invite')
       }
 
-      window.alert(`Invite resent to ${employee.full_name}.`)
+      window.alert(t('inviteResent', { name: employee.full_name }))
     } catch (error) {
       console.error('Failed to resend invite', error)
-      window.alert('Failed to resend invite. Please try again.')
+      window.alert(t('failedToResendInvite'))
     } finally {
       setIsResendingId(null)
     }
   }
 
   async function sendPasswordReset(employee: Employee) {
-    const allowed = window.confirm(`Send a password reset email to ${employee.full_name}?`)
+    const allowed = window.confirm(t('confirmPasswordReset', { name: employee.full_name }))
 
     if (!allowed) {
       return
@@ -354,10 +357,10 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
         throw new Error('Failed to send password reset')
       }
 
-      window.alert(`Password reset email sent to ${employee.full_name}.`)
+      window.alert(t('passwordResetSent', { name: employee.full_name }))
     } catch (error) {
       console.error('Failed to send password reset', error)
-      window.alert('Failed to send password reset email. Please try again.')
+      window.alert(t('failedToSendPasswordReset'))
     } finally {
       setIsResettingPasswordId(null)
     }
@@ -366,21 +369,21 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
   return (
     <div>
       <PageHeader
-        title="Employees"
+        title={t('title')}
         action={
           <Button className="w-full sm:w-auto" onClick={() => setIsModalOpen(true)}>
-            Invite Employee
+            {t('inviteEmployee')}
           </Button>
         }
       />
 
       <Card className="mb-4">
         <SearchableSelect
-          label="Search employee"
+          label={t('searchEmployee')}
           options={employees.map((e) => ({ id: e.id, label: e.full_name }))}
           value={nameFilter}
           onChange={(id) => setNameFilter(id)}
-          placeholder="All employees"
+          placeholder={t('allEmployees')}
         />
       </Card>
 
@@ -394,10 +397,10 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
                 onClick={() => setEditEmployee(employee)}
               >
                 <span className="text-base font-semibold text-slate-900">{employee.full_name}</span>
-                <span className="text-sm text-slate-500">{employee.phone || 'No phone'}</span>
+                <span className="text-sm text-slate-500">{employee.phone || t('noPhone')}</span>
               </button>
               <div className="flex shrink-0 items-center gap-2">
-                <StatusBadge active={employee.is_active} />
+                <StatusBadge active={employee.is_active} activeLabel={t('active')} inactiveLabel={t('inactive')} />
                 <EmployeeActionsMenu
                   employee={employee}
                   isUpdatingActive={isUpdatingId === employee.id}
@@ -418,7 +421,7 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
 
       {!filteredEmployees.length ? (
         <Card className="lg:hidden">
-          <p className="py-2 text-center text-sm text-slate-600">No employees found.</p>
+          <p className="py-2 text-center text-sm text-slate-600">{t('noEmployeesFound')}</p>
         </Card>
       ) : null}
 
@@ -427,9 +430,9 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Phone</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('name')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('phone')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('status')}</th>
                 <th className="w-12 px-4 py-3" />
               </tr>
             </thead>
@@ -443,7 +446,7 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">{employee.full_name}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{employee.phone || '-'}</td>
                   <td className="px-4 py-3">
-                    <StatusBadge active={employee.is_active} />
+                    <StatusBadge active={employee.is_active} activeLabel={t('active')} inactiveLabel={t('inactive')} />
                   </td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <EmployeeActionsMenu
@@ -463,7 +466,7 @@ export function EmployeesTable({ initialEmployees }: EmployeesTableProps) {
               ))}
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-5 text-center text-sm text-slate-600">No employees found.</td>
+                  <td colSpan={4} className="px-4 py-5 text-center text-sm text-slate-600">{t('noEmployeesFound')}</td>
                 </tr>
               ) : null}
             </tbody>

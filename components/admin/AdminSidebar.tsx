@@ -1,23 +1,19 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState, type ReactElement } from 'react'
+import { useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 import { Button } from '@/components/ui/Button'
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
 
 type AdminSidebarProps = {
   fullName: string
   onClose?: () => void
-}
-
-type NavItem = {
-  label: string
-  href: string
-  icon: (props: { className?: string }) => ReactElement
 }
 
 function CalendarIcon({ className }: { className?: string }) {
@@ -88,48 +84,23 @@ function UserCircleIcon({ className }: { className?: string }) {
   )
 }
 
-const navItems: NavItem[] = [
-  {
-    label: 'Dashboard',
-    href: '/admin',
-    icon: CalendarIcon,
-  },
-  {
-    label: 'Calendar',
-    href: '/admin/calendar',
-    icon: CalendarIcon,
-  },
-  {
-    label: 'My Schedule',
-    href: '/admin/my-schedule',
-    icon: MyScheduleIcon,
-  },
-  {
-    label: 'Clients',
-    href: '/admin/clients',
-    icon: UsersIcon,
-  },
-  {
-    label: 'Invoices',
-    href: '/admin/invoices',
-    icon: ReceiptIcon,
-  },
-  {
-    label: 'Employees',
-    href: '/admin/employees',
-    icon: TeamIcon,
-  },
-  {
-    label: 'Jobs',
-    href: '/admin/jobs',
-    icon: BriefcaseIcon,
-  },
-]
+const NAV_CONFIG = [
+  { key: 'dashboard' as const, href: '/admin', icon: CalendarIcon },
+  { key: 'calendar' as const, href: '/admin/calendar', icon: CalendarIcon },
+  { key: 'mySchedule' as const, href: '/admin/my-schedule', icon: MyScheduleIcon },
+  { key: 'clients' as const, href: '/admin/clients', icon: UsersIcon },
+  { key: 'invoices' as const, href: '/admin/invoices', icon: ReceiptIcon },
+  { key: 'employees' as const, href: '/admin/employees', icon: TeamIcon },
+  { key: 'jobs' as const, href: '/admin/jobs', icon: BriefcaseIcon },
+] as const
 
 export function AdminSidebar({ fullName, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const t = useTranslations('nav')
+  const tCommon = useTranslations('common')
+  const navItems = NAV_CONFIG.map((item) => ({ ...item, label: t(item.key) }))
 
   async function handleSignOut() {
     try {
@@ -163,7 +134,7 @@ export function AdminSidebar({ fullName, onClose }: AdminSidebarProps) {
       </div>
 
       <div className="px-4 pb-3 pt-4 lg:px-0 lg:pt-0">
-        <p className="text-xl font-bold tracking-tight text-brand-700">CleanSchedule</p>
+        <p className="text-xl font-bold tracking-tight text-brand-700">{tCommon('appName')}</p>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 lg:px-0" aria-label="Admin navigation">
@@ -202,6 +173,7 @@ export function AdminSidebar({ fullName, onClose }: AdminSidebarProps) {
         >
           {fullName}
         </Button>
+        <LanguageSwitcher className="w-full" />
         <Button
           variant="danger"
           className="w-full lg:w-full"
@@ -209,7 +181,7 @@ export function AdminSidebar({ fullName, onClose }: AdminSidebarProps) {
           onClick={handleSignOut}
           aria-label="Sign out"
         >
-          Sign out
+          {t('signOut')}
         </Button>
       </div>
     </div>

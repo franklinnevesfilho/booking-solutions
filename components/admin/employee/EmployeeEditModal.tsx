@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/Button'
@@ -32,6 +33,8 @@ const employeeEditSchema = z.object({
 type EmployeeEditFormValues = z.infer<typeof employeeEditSchema>
 
 export function EmployeeEditModal({ isOpen, employee, onClose, onUpdated }: EmployeeEditModalProps) {
+  const t = useTranslations('employees')
+  const tCommon = useTranslations('common')
   const modalRef = useRef<HTMLDivElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -148,12 +151,12 @@ export function EmployeeEditModal({ isOpen, employee, onClose, onUpdated }: Empl
       }
 
       const updated = (await response.json()) as Employee
-      setSuccessMessage('Employee updated successfully.')
+      setSuccessMessage(t('employeeUpdated'))
       onUpdated(updated)
       onClose()
     } catch (error) {
       console.error('Failed to update employee', error)
-      setErrorMessage('Failed to update employee. Please try again.')
+      setErrorMessage(t('failedToSave'))
     } finally {
       setIsSubmitting(false)
     }
@@ -176,7 +179,7 @@ export function EmployeeEditModal({ isOpen, employee, onClose, onUpdated }: Empl
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-10 sm:h-auto sm:w-[min(560px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">Edit Employee</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t('editTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -199,9 +202,9 @@ export function EmployeeEditModal({ isOpen, employee, onClose, onUpdated }: Empl
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</div>
             ) : null}
 
-            <Input label="Full name" error={errors.full_name?.message} {...register('full_name')} />
+            <Input label={t('fullNameLabel')} error={errors.full_name?.message} {...register('full_name')} />
             <Input
-              label="Phone"
+              label={t('phoneLabel')}
               error={errors.phone?.message}
               {...register('phone', {
                 setValueAs: (value) => (value === '' ? null : value),
@@ -209,7 +212,7 @@ export function EmployeeEditModal({ isOpen, employee, onClose, onUpdated }: Empl
             />
 
             <div className="flex items-center gap-3">
-              <label htmlFor="is_active" className="text-sm font-medium text-slate-700">Active</label>
+              <label htmlFor="is_active" className="text-sm font-medium text-slate-700">{t('activeLabel')}</label>
               <input
                 id="is_active"
                 type="checkbox"
@@ -222,10 +225,10 @@ export function EmployeeEditModal({ isOpen, employee, onClose, onUpdated }: Empl
           <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button type="submit" isLoading={isSubmitting}>
-                Save Changes
+                {t('saveEmployee')}
               </Button>
             </div>
           </div>

@@ -1,7 +1,7 @@
 'use client'
 
-import { format } from 'date-fns'
 import { useMemo, useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 
 import type { InvoiceWithDetails } from '@/types'
 
@@ -16,12 +16,6 @@ type InvoicesTableProps = {
   initialInvoices: InvoiceWithDetails[]
 }
 
-const filters: Array<{ value: InvoiceStatusFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'paid', label: 'Paid' },
-]
-
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
@@ -31,7 +25,7 @@ function formatCurrency(value: number) {
   return currencyFormatter.format(value)
 }
 
-function formatAppointmentDate(invoice: InvoiceWithDetails) {
+function formatAppointmentDate(invoice: InvoiceWithDetails, locale: string) {
   const startTime = invoice.appointment?.start_time
 
   if (!startTime) {
@@ -39,19 +33,33 @@ function formatAppointmentDate(invoice: InvoiceWithDetails) {
   }
 
   try {
-    return format(new Date(startTime), 'MMM d, yyyy · h:mm a')
+    return new Intl.DateTimeFormat(locale, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(startTime))
   } catch {
     return '—'
   }
 }
 
 export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
+  const t = useTranslations('invoices')
+  const locale = useLocale()
   const [invoices, setInvoices] = useState<InvoiceWithDetails[]>(initialInvoices)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatusFilter>('all')
   const [clientFilter, setClientFilter] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  const filters: Array<{ value: InvoiceStatusFilter; label: string }> = [
+    { value: 'all', label: t('all') },
+    { value: 'pending', label: t('unpaid') },
+    { value: 'paid', label: t('paid') },
+  ]
 
   const uniqueClients = useMemo(() => {
     const seen = new Set<string>()
@@ -86,7 +94,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
       setClientFilter('')
     } catch (fetchError) {
       console.error('Failed to fetch invoices', fetchError)
-      setError('Failed to load invoices. Please try again.')
+      setError(t('failedToLoad'))
     } finally {
       setLoading(false)
     }
@@ -126,7 +134,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
       )
     } catch (updateError) {
       console.error('Failed to update invoice', updateError)
-      setError('Failed to update invoice status. Please try again.')
+      setError(t('failedToMarkPaid'))
     } finally {
       setUpdatingId(null)
     }
@@ -138,11 +146,11 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
         <div className="flex flex-col sm:flex-row gap-3 items-center sm:items-end justify-center w-full">
           <div className='w-full '>
             <SearchableSelect
-              label="Client"
+              label={t('client')}
               options={uniqueClients.map((c) => ({ id: c.id, label: c.full_name }))}
               value={clientFilter}
               onChange={(id) => setClientFilter(id)}
-              placeholder="All clients"
+              placeholder={t('allClients')}
               disabled={loading || uniqueClients.length === 0}
             />
           </div>
@@ -164,14 +172,14 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
             </div>
         </div>
       </Card>
-      <p className={`mt-4 m-0 text-sm text-slate-500 ${loading ? 'opacity-100' : 'opacity-0'}`}>Loading invoices...</p>
+      <p className={`mt-4 m-0 text-sm text-slate-500 ${loading ? 'opacity-100' : 'opacity-0'}`}>{t('loadingInvoices')}</p>
 
       {error ? (
         <Card>
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-rose-700">{error}</p>
             <Button variant="secondary" onClick={() => void fetchInvoices(statusFilter)}>
-              Retry
+              {t('retry')}
             </Button>
           </div>
         </Card>
@@ -186,11 +194,11 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
             <Card key={invoice.id} className="space-y-3">
               <div className="space-y-1">
                 <p className="text-base font-semibold text-slate-900">{invoice.client?.full_name ?? '—'}</p>
-                <p className="text-sm text-slate-600">{formatAppointmentDate(invoice)}</p>
-                <p className="text-sm text-slate-600">Job: {invoice.job?.name ?? '—'}</p>
-                <p className="text-sm text-slate-600">Amount: {formatCurrency(invoice.amount_charged)}</p>
-                <p className="text-sm text-slate-600">Discount: {discount > 0 ? formatCurrency(discount) : '—'}</p>
-                <p className="text-sm font-medium text-slate-900">Net: {formatCurrency(net)}</p>
+                <p className="text-sm text-slate-600">{formatAppointmentDate(invoice, locale)}</p>
+                <p className="text-sm text-slate-600">{t('job')}: {invoice.job?.name ?? '—'}</p>
+                <p className="text-sm text-slate-600">{t('amount')}: {formatCurrency(invoice.amount_charged)}</p>
+                <p className="text-sm text-slate-600">{t('discount')}: {discount > 0 ? formatCurrency(discount) : '—'}</p>
+                <p className="text-sm font-medium text-slate-900">{t('net')}: {formatCurrency(net)}</p>
                 <span
                   className={cn(
                     'mt-1 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset',
@@ -199,7 +207,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
                       : 'bg-amber-100 text-amber-800 ring-amber-200',
                   )}
                 >
-                  {invoice.is_paid ? 'Paid' : 'Pending'}
+                  {invoice.is_paid ? t('paid') : t('unpaid')}
                 </span>
               </div>
 
@@ -210,7 +218,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
                 onClick={() => void toggleInvoicePaid(invoice)}
                 className="w-full"
               >
-                {invoice.is_paid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                {updatingId === invoice.id ? t('markingPaid') : invoice.is_paid ? t('markAsUnpaid') : t('markPaid')}
               </Button>
             </Card>
           )
@@ -218,7 +226,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
 
         {!loading && filteredInvoices.length === 0 ? (
           <Card>
-            <p className="py-2 text-center text-sm text-slate-600">No invoices found.</p>
+            <p className="py-2 text-center text-sm text-slate-600">{t('noInvoicesFound')}</p>
           </Card>
         ) : null}
       </div>
@@ -228,14 +236,14 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Client</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Appointment</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Job</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Discount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Net</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('client')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('date')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('job')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('amount')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('discount')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('net')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('status')}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">{t('action')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -246,7 +254,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
                 return (
                   <tr key={invoice.id}>
                     <td className="px-4 py-3 text-sm font-medium text-slate-900">{invoice.client?.full_name ?? '—'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{formatAppointmentDate(invoice)}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{formatAppointmentDate(invoice, locale)}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{invoice.job?.name ?? '—'}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{formatCurrency(invoice.amount_charged)}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{discount > 0 ? formatCurrency(discount) : '—'}</td>
@@ -260,7 +268,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
                             : 'bg-amber-100 text-amber-800 ring-amber-200',
                         )}
                       >
-                        {invoice.is_paid ? 'Paid' : 'Pending'}
+                        {invoice.is_paid ? t('paid') : t('unpaid')}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -270,7 +278,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
                         disabled={updatingId === invoice.id}
                         onClick={() => void toggleInvoicePaid(invoice)}
                       >
-                        {invoice.is_paid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                        {updatingId === invoice.id ? t('markingPaid') : invoice.is_paid ? t('markAsUnpaid') : t('markPaid')}
                       </Button>
                     </td>
                   </tr>
@@ -279,7 +287,7 @@ export function InvoicesTable({ initialInvoices }: InvoicesTableProps) {
             </tbody>
           </table>
 
-          {!loading && filteredInvoices.length === 0 ? <p className="px-4 py-5 text-center text-sm text-slate-600">No invoices found.</p> : null}
+          {!loading && filteredInvoices.length === 0 ? <p className="px-4 py-5 text-center text-sm text-slate-600">{t('noInvoicesFound')}</p> : null}
         </div>
       </Card>
     </div>

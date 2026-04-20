@@ -1,8 +1,11 @@
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
 import { Button } from '@/components/ui/Button'
+import { LocaleSync } from '@/components/ui/LocaleSync'
 import { createClient } from '@/lib/supabase/server'
 
 function UserCircleIcon({ className }: { className?: string }) {
@@ -32,15 +35,18 @@ export default async function EmployeeLayout({ children }: EmployeeLayoutProps) 
 
   const { data: profileData } = await supabase
     .from('profiles')
-    .select('full_name, role')
+    .select('full_name, role, locale')
     .filter('id', 'eq', user.id)
     .maybeSingle()
 
-  const profile = profileData as { full_name: string; role: string } | null
+  const profile = profileData as { full_name: string; role: string; locale: string } | null
 
   if (!profile || profile.role !== 'employee') {
     redirect('/admin')
   }
+
+  const t = await getTranslations('common')
+  const tNav = await getTranslations('nav')
 
   async function handleSignOut() {
     'use server'
@@ -52,9 +58,10 @@ export default async function EmployeeLayout({ children }: EmployeeLayoutProps) 
 
   return (
     <div className="min-h-screen bg-slate-100">
+      <LocaleSync profileLocale={profile.locale} />
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <p className="text-lg font-bold tracking-tight text-brand-700">CleanSchedule</p>
+          <p className="text-lg font-bold tracking-tight text-brand-700">{t('appName')}</p>
           <div className="flex items-center gap-3">
             <Link
               href="/employee/profile"
@@ -64,13 +71,14 @@ export default async function EmployeeLayout({ children }: EmployeeLayoutProps) 
               <UserCircleIcon className="h-4 w-4 shrink-0" />
               <span className="max-w-[10rem] truncate sm:max-w-[16rem]">{profile.full_name || 'Employee'}</span>
             </Link>
+            <LanguageSwitcher />
             <form action={handleSignOut} className="shrink-0">
               <Button 
                 type="submit" 
                 variant="danger" 
                 className="w-auto min-h-11 px-4 text-sm whitespace-nowrap"
               >
-                Sign out
+                {tNav('signOut')}
               </Button>
             </form>
           </div>

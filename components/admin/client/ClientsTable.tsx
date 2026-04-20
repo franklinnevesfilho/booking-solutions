@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 import type { Client, ClientWithHomes } from '@/types'
 
@@ -15,6 +16,7 @@ type ClientsTableProps = {
 }
 
 export function ClientsTable({ initialClients }: ClientsTableProps) {
+  const t = useTranslations('clients')
   const [clients, setClients] = useState<ClientWithHomes[]>(initialClients)
   const [query, setQuery] = useState('')
   const [activeClient, setActiveClient] = useState<Client | null>(null)
@@ -59,13 +61,13 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete client')
+        throw new Error(t('failedToDelete'))
       }
 
       setClients((current) => current.filter((client) => client.id !== clientId))
       setPendingDeleteId(null)
     } catch (error) {
-      console.error('Failed to delete client', error)
+      console.error(t('failedToDelete'), error)
     } finally {
       setIsDeleting(false)
     }
@@ -88,18 +90,18 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        title="Clients"
+        title={t('title')}
         action={
           <Button onClick={openCreateModal} className="w-full sm:w-auto">
-            Add Client
+            {t('addClient')}
           </Button>
         }
       />
 
       <Card className="mb-4 shrink-0">
         <Input
-          label="Search clients"
-          placeholder="Search by client name"
+          label={t('searchClients')}
+          placeholder={t('searchByClientName')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
@@ -111,8 +113,8 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
           <Card key={client.id} className="space-y-3">
             <div>
               <p className="text-base font-semibold text-slate-900">{client.full_name}</p>
-              <p className="text-sm text-slate-600">{client.phone || 'No phone'}</p>
-              <p className="text-sm text-slate-600">{client.email || 'No email'}</p>
+              <p className="text-sm text-slate-600">{client.phone || t('noPhone')}</p>
+              <p className="text-sm text-slate-600">{client.email || t('noEmail')}</p>
               {(() => {
                 const primary = client.homes?.find((h) => h.is_primary)
                 return primary ? <p className="text-sm text-slate-600">{primary.street}{primary.city ? `, ${primary.city}` : ''}</p> : null
@@ -120,20 +122,20 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="secondary" onClick={() => openEditModal(client)} className="w-full">
-                Edit
+                {t('editClient')}
               </Button>
               {pendingDeleteId === client.id ? (
                 <div className="flex w-full flex-col gap-2 sm:flex-row">
                   <Button variant="danger" isLoading={isDeleting} onClick={() => void deleteClient(client.id)} className="w-full">
-                    Are you sure?
+                    {t('areYouSure')}
                   </Button>
                   <Button variant="ghost" onClick={() => setPendingDeleteId(null)} className="w-full">
-                    Cancel
+                    {t('cancelDelete')}
                   </Button>
                 </div>
               ) : (
                 <Button variant="danger" onClick={() => setPendingDeleteId(client.id)} className="w-full">
-                  Delete
+                  {t('deleteClient')}
                 </Button>
               )}
             </div>
@@ -142,7 +144,7 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
 
         {filteredClients.length === 0 ? (
           <Card>
-            <p className="text-sm text-slate-600">No clients found.</p>
+            <p className="text-sm text-slate-600">{t('noClientsFound')}</p>
           </Card>
         ) : null}
         </div>
@@ -151,11 +153,11 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="sticky top-0 z-10 bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Phone</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Primary Home</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('name')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('phone')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('email')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('primaryHome')}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -173,20 +175,20 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="secondary" onClick={() => openEditModal(client)}>
-                        Edit
+                        {t('editClient')}
                       </Button>
                       {pendingDeleteId === client.id ? (
                         <>
                           <Button variant="danger" isLoading={isDeleting} onClick={() => void deleteClient(client.id)}>
-                            Are you sure?
+                            {t('areYouSure')}
                           </Button>
                           <Button variant="ghost" onClick={() => setPendingDeleteId(null)}>
-                            Cancel
+                            {t('cancelDelete')}
                           </Button>
                         </>
                       ) : (
                         <Button variant="danger" onClick={() => setPendingDeleteId(client.id)}>
-                          Delete
+                          {t('deleteClient')}
                         </Button>
                       )}
                     </div>
@@ -196,7 +198,7 @@ export function ClientsTable({ initialClients }: ClientsTableProps) {
             </tbody>
           </table>
 
-          {filteredClients.length === 0 ? <p className="px-4 py-5 text-sm text-slate-600">No clients found.</p> : null}
+          {filteredClients.length === 0 ? <p className="px-4 py-5 text-sm text-slate-600">{t('noClientsFound')}</p> : null}
         </Card>
       </div>
 

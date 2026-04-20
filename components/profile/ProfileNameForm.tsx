@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -9,21 +10,22 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
-const profileNameSchema = z.object({
-  full_name: z.string().trim().min(1, 'Name is required'),
-})
-
-type ProfileNameValues = z.infer<typeof profileNameSchema>
-
 type ProfileNameFormProps = {
   defaultFullName: string
 }
 
 export function ProfileNameForm({ defaultFullName }: ProfileNameFormProps) {
+  const t = useTranslations('profile')
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const profileNameSchema = z.object({
+    full_name: z.string().trim().min(1, t('nameRequired')),
+  })
+
+  type ProfileNameValues = z.infer<typeof profileNameSchema>
 
   const {
     register,
@@ -52,7 +54,7 @@ export function ProfileNameForm({ defaultFullName }: ProfileNameFormProps) {
       })
 
       if (!response.ok) {
-        let message = 'Failed to save profile.'
+        let message = t('failedToSaveProfile')
 
         try {
           const errorPayload = (await response.json()) as { error?: string }
@@ -70,10 +72,10 @@ export function ProfileNameForm({ defaultFullName }: ProfileNameFormProps) {
       const updatedName = updatedProfile.full_name ?? values.full_name
 
       reset({ full_name: updatedName })
-      setSuccessMessage('Name updated successfully.')
+      setSuccessMessage(t('nameUpdatedSuccessfully'))
       router.refresh()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unexpected error.')
+      setErrorMessage(error instanceof Error ? error.message : t('unexpectedError'))
     } finally {
       setIsSubmitting(false)
     }
@@ -81,13 +83,13 @@ export function ProfileNameForm({ defaultFullName }: ProfileNameFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <Input label="Full Name" error={errors.full_name?.message} {...register('full_name')} />
+      <Input label={t('fullName')} error={errors.full_name?.message} {...register('full_name')} />
 
       {errorMessage ? <p className="text-sm text-rose-600">{errorMessage}</p> : null}
       {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
 
       <Button type="submit" isLoading={isSubmitting} className="w-full sm:w-auto">
-        Save Changes
+        {t('saveChanges')}
       </Button>
     </form>
   )

@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -26,6 +27,8 @@ type SetPasswordValues = z.infer<typeof setPasswordSchema>
 export default function SetPasswordPage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
+  const t = useTranslations('auth')
+  const tCommon = useTranslations('common')
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [serverError, setServerError] = useState<string | null>(null)
@@ -90,20 +93,20 @@ export default function SetPasswordPage() {
       return
     }
 
-    router.push('/')
+    router.replace('/')
   }
 
   return (
     <Card className="w-full">
       <div className="mb-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">CleanSchedule</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Set your password</h1>
-        <p className="mt-2 text-sm text-slate-600">Choose a secure password to complete your account setup.</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">{tCommon('appName')}</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t('setPassword')}</h1>
+        <p className="mt-2 text-sm text-slate-600">{t('setPasswordSubtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <PasswordInput
-          label="Password"
+          label={t('newPasswordLabel')}
           autoComplete="new-password"
           error={errors.password?.message}
           disabled={isCheckingAuth}
@@ -111,7 +114,7 @@ export default function SetPasswordPage() {
         />
 
         <PasswordInput
-          label="Confirm password"
+          label={t('confirmPasswordLabel')}
           autoComplete="new-password"
           error={errors.confirmPassword?.message}
           disabled={isCheckingAuth}
@@ -121,7 +124,7 @@ export default function SetPasswordPage() {
         {serverError ? <p className="text-sm text-rose-600">{serverError}</p> : null}
 
         <Button type="submit" isLoading={isSubmitting || isCheckingAuth} className="h-11 w-full text-base">
-          Set password & continue
+          {t('setPasswordButton')}
         </Button>
       </form>
     </Card>

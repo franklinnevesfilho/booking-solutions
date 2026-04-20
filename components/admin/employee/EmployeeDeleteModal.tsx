@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 import { Button } from '@/components/ui/Button'
 
@@ -20,6 +21,8 @@ type EmployeeDeleteModalProps = {
 }
 
 export function EmployeeDeleteModal({ isOpen, employee, onClose, onDeleted }: EmployeeDeleteModalProps) {
+  const t = useTranslations('employees')
+  const tCommon = useTranslations('common')
   const modalRef = useRef<HTMLDivElement>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -109,7 +112,7 @@ export function EmployeeDeleteModal({ isOpen, employee, onClose, onDeleted }: Em
       onClose()
     } catch (error) {
       console.error('Failed to delete employee', error)
-      setErrorMessage('Failed to delete account. Please try again.')
+      setErrorMessage(t('failedToDelete'))
     } finally {
       setIsDeleting(false)
     }
@@ -132,7 +135,7 @@ export function EmployeeDeleteModal({ isOpen, employee, onClose, onDeleted }: Em
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-10 sm:h-auto sm:w-[min(560px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">Delete Account</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t('deleteTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -152,17 +155,17 @@ export function EmployeeDeleteModal({ isOpen, employee, onClose, onDeleted }: Em
             ) : null}
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
-              {`This will permanently remove ${employee.full_name}'s account and prevent them from logging in. This action cannot be undone.`}
+              {t('deleteConfirm', { name: employee.full_name })}
             </div>
           </div>
 
           <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button variant="secondary" onClick={onClose} disabled={isDeleting}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button variant="danger" isLoading={isDeleting} onClick={() => void deleteEmployee()}>
-                Delete Account
+                {isDeleting ? t('deleting') : t('deleteAccount')}
               </Button>
             </div>
           </div>

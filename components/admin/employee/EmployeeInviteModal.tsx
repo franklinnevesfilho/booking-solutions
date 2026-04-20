@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/Button'
@@ -22,6 +23,8 @@ const employeeInviteSchema = z.object({
 type EmployeeInviteFormValues = z.infer<typeof employeeInviteSchema>
 
 export function EmployeeInviteModal({ isOpen, onClose, onInvited }: EmployeeInviteModalProps) {
+  const t = useTranslations('employees')
+  const tCommon = useTranslations('common')
   const modalRef = useRef<HTMLDivElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -98,7 +101,7 @@ export function EmployeeInviteModal({ isOpen, onClose, onInvited }: EmployeeInvi
         throw new Error('Failed to invite employee')
       }
 
-      setSuccessMessage('Invite sent!')
+      setSuccessMessage(t('inviteSent'))
       onInvited()
       reset({
         full_name: '',
@@ -106,7 +109,7 @@ export function EmployeeInviteModal({ isOpen, onClose, onInvited }: EmployeeInvi
       })
     } catch (error) {
       console.error('Failed to invite employee', error)
-      setErrorMessage('Failed to send invite. Please try again.')
+      setErrorMessage(t('failedToInvite'))
     } finally {
       setIsSubmitting(false)
     }
@@ -129,7 +132,7 @@ export function EmployeeInviteModal({ isOpen, onClose, onInvited }: EmployeeInvi
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-10 sm:h-auto sm:w-[min(560px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">Invite Employee</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t('inviteTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -152,17 +155,17 @@ export function EmployeeInviteModal({ isOpen, onClose, onInvited }: EmployeeInvi
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</div>
             ) : null}
 
-            <Input label="Full name" error={errors.full_name?.message} {...register('full_name')} />
-            <Input label="Email" type="email" error={errors.email?.message} {...register('email')} />
+            <Input label={t('fullNameLabel')} error={errors.full_name?.message} {...register('full_name')} />
+            <Input label={t('email')} type="email" error={errors.email?.message} {...register('email')} />
           </div>
 
           <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
-                Close
+                {tCommon('close')}
               </Button>
               <Button type="submit" isLoading={isSubmitting}>
-                Send Invite
+                {isSubmitting ? t('sendingInvite') : t('sendInvite')}
               </Button>
             </div>
           </div>

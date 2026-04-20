@@ -1,8 +1,10 @@
 import { format, parseISO } from 'date-fns'
+import { getLocale, getTranslations } from 'next-intl/server'
 
 import { PageHeader } from '@/components/admin/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { createClient } from '@/lib/supabase/server'
+import { formatCurrency, getDateFnsLocale } from '@/lib/utils/formatting'
 
 type InvoiceSummaryRow = {
   amount_charged: number
@@ -27,17 +29,6 @@ type UpcomingAppointmentRow = {
     | null
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-function formatCurrency(value: number) {
-  return currencyFormatter.format(value)
-}
-
 function getStatusBadgeClass(status: 'scheduled' | 'completed' | 'cancelled') {
   if (status === 'completed') {
     return 'bg-emerald-100 text-emerald-700 ring-emerald-200'
@@ -51,6 +42,7 @@ function getStatusBadgeClass(status: 'scheduled' | 'completed' | 'cancelled') {
 }
 
 export default async function AdminPage() {
+  const [t, locale] = await Promise.all([getTranslations('dashboard'), getLocale()])
   const supabase = await createClient()
   const nowIso = new Date().toISOString()
 
@@ -99,53 +91,53 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dashboard" />
+      <PageHeader title={t('title')} />
 
       <section className="grid gap-4 md:grid-cols-3">
         <Card className="space-y-2">
-          <p className="text-sm font-medium text-slate-600">Total Income</p>
-          <p className="text-2xl font-semibold tracking-tight text-slate-900">{formatCurrency(totalIncome)}</p>
+          <p className="text-sm font-medium text-slate-600">{t('totalIncome')}</p>
+          <p className="text-2xl font-semibold tracking-tight text-slate-900">{formatCurrency(totalIncome, locale)}</p>
         </Card>
 
         <Card className="space-y-2">
-          <p className="text-sm font-medium text-slate-600">Pending Invoices</p>
-          <p className="text-2xl font-semibold tracking-tight text-slate-900">{formatCurrency(pendingInvoiceAmount)}</p>
-          <p className="text-sm text-slate-600">{pendingInvoiceCount} {pendingInvoiceCount === 1 ? 'invoice' : 'invoices'} pending</p>
+          <p className="text-sm font-medium text-slate-600">{t('pendingInvoices')}</p>
+          <p className="text-2xl font-semibold tracking-tight text-slate-900">{formatCurrency(pendingInvoiceAmount, locale)}</p>
+          <p className="text-sm text-slate-600">{t('pendingInvoiceCount', { count: pendingInvoiceCount })}</p>
         </Card>
 
         <Card className="space-y-2">
-          <p className="text-sm font-medium text-slate-600">Upcoming Appointments</p>
+          <p className="text-sm font-medium text-slate-600">{t('upcomingAppointments')}</p>
           <p className="text-2xl font-semibold tracking-tight text-slate-900">{upcomingAppointmentsCount}</p>
         </Card>
       </section>
 
       <Card className="overflow-hidden p-0">
         <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
-          <h2 className="text-base font-semibold text-slate-900">Upcoming Appointments</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t('upcomingAppointments')}</h2>
         </div>
 
         {upcomingAppointments.length === 0 ? (
-          <div className="px-5 py-8 text-sm text-slate-600 sm:px-6">No upcoming appointments.</div>
+          <div className="px-5 py-8 text-sm text-slate-600 sm:px-6">{t('noUpcoming')}</div>
         ) : (
           <ul className="divide-y divide-slate-200">
             {upcomingAppointments.map((appointment) => {
               const appointmentInvoice = appointment.invoices?.[0] ?? null
-              const invoiceLabel = appointmentInvoice ? (appointmentInvoice.is_paid ? 'Paid' : 'Pending') : 'No Invoice'
+              const invoiceLabel = appointmentInvoice ? (appointmentInvoice.is_paid ? t('invoicePaid') : t('invoicePending')) : t('noInvoice')
 
               return (
                 <li key={appointment.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[1.5fr_1fr_1fr_auto] sm:items-center sm:px-6">
                   <p className="text-sm font-medium text-slate-800">
-                    {format(parseISO(appointment.start_time), "MMM d, yyyy '·' h:mm a")}
+                    {format(parseISO(appointment.start_time), "MMM d, yyyy '·' h:mm a", { locale: getDateFnsLocale(locale) })}
                   </p>
-                  <p className="text-sm text-slate-700">{appointment.clients?.full_name ?? 'No Client'}</p>
-                  <p className="text-sm text-slate-700">{appointment.jobs?.name ?? 'No Job'}</p>
+                  <p className="text-sm text-slate-700">{appointment.clients?.full_name ?? t('noClient')}</p>
+                  <p className="text-sm text-slate-700">{appointment.jobs?.name ?? t('noJob')}</p>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${getStatusBadgeClass(appointment.status)}`}>
                       {appointment.status === 'scheduled'
-                        ? 'Scheduled'
+                        ? t('statusScheduled')
                         : appointment.status === 'completed'
-                          ? 'Completed'
-                          : 'Cancelled'}
+                          ? t('statusCompleted')
+                          : t('statusCancelled')}
                     </span>
                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200">
                       {invoiceLabel}

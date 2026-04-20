@@ -277,6 +277,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          locale: string
           phone: string | null
           role: string
           updated_at: string
@@ -286,6 +287,7 @@ export type Database = {
           full_name: string
           id: string
           is_active?: boolean
+          locale?: string
           phone?: string | null
           role: string
           updated_at?: string
@@ -295,6 +297,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          locale?: string
           phone?: string | null
           role?: string
           updated_at?: string

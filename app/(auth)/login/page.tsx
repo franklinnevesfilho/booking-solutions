@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useFormStatus } from 'react-dom'
 import { useActionState } from 'react'
 
@@ -11,9 +12,10 @@ import { signIn, type SignInState } from './actions'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
+  const t = useTranslations('auth')
   return (
     <Button type="submit" isLoading={pending} className="h-11 w-full text-base">
-      Sign in
+      {t('signInButton')}
     </Button>
   )
 }
@@ -22,26 +24,28 @@ const initialState: SignInState = { error: null }
 
 export default function LoginPage() {
   const [state, formAction] = useActionState(signIn, initialState)
+  const t = useTranslations('auth')
+  const tCommon = useTranslations('common')
 
   return (
     <Card className="w-full">
       <div className="mb-6 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">CleanSchedule</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">Sign in</h1>
-        <p className="mt-2 text-sm text-slate-600">Enter your work email and password.</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">{tCommon('appName')}</p>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">{t('signIn')}</h1>
+        <p className="mt-2 text-sm text-slate-600">{t('signInSubtitle')}</p>
       </div>
 
       <form action={formAction} className="space-y-4">
         <Input
-          label="Email"
+          label={t('emailLabel')}
           type="email"
           name="email"
           autoComplete="email"
-          placeholder="you@company.com"
+          placeholder={t('emailPlaceholder')}
           required
         />
         <PasswordInput
-          label="Password"
+          label={t('passwordLabel')}
           name="password"
           autoComplete="current-password"
           required

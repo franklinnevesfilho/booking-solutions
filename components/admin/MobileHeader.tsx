@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
@@ -12,6 +13,7 @@ type MobileHeaderProps = {
 export function MobileHeader({ fullName }: MobileHeaderProps) {
   const pathname = usePathname()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const t = useTranslations('common')
 
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export function MobileHeader({ fullName }: MobileHeaderProps) {
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-brand-700">CleanSchedule</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-brand-700">{t('appName')}</p>
           </div>
           <button
             type="button"

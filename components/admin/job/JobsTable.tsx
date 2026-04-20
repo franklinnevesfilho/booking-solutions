@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 import type { Job } from '@/types'
 
@@ -16,6 +17,8 @@ type JobsTableProps = {
 }
 
 export function JobsTable({ initialJobs }: JobsTableProps) {
+  const t = useTranslations('jobs')
+  const tCommon = useTranslations('common')
   const [jobs, setJobs] = useState<Job[]>(initialJobs)
   const [activeJob, setActiveJob] = useState<Job | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -70,21 +73,21 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
   return (
     <div>
       <PageHeader
-        title="Jobs"
+        title={t('title')}
         action={
           <Button onClick={openCreateModal} className="w-full sm:w-auto">
-            Add Job
+            {t('addJob')}
           </Button>
         }
       />
 
       <Card className="mb-4">
         <SearchableSelect
-          label="Search job"
+          label={t('searchJob')}
           options={jobs.map((j) => ({ id: j.id, label: j.name }))}
           value={nameFilter}
           onChange={(id) => setNameFilter(id)}
-          placeholder="All jobs"
+          placeholder={t('allJobs')}
         />
       </Card>
 
@@ -95,7 +98,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
             <div>
               <p className="text-base font-semibold text-slate-900">{job.name}</p>
               <p className="text-sm text-slate-600">{job.description ?? '—'}</p>
-              <p className="text-sm text-slate-600">${job.default_price_per_hour.toFixed(2)}/hr</p>
+              <p className="text-sm text-slate-600">${job.default_price_per_hour.toFixed(2)} {t('perHour')}</p>
               <span
                 className={cn(
                   'mt-1 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset',
@@ -104,12 +107,12 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
                     : 'bg-slate-100 text-slate-600 ring-slate-200',
                 )}
               >
-                {job.is_active ? 'Active' : 'Archived'}
+                {job.is_active ? t('activeStatus') : t('archivedStatus')}
               </span>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button variant="secondary" onClick={() => openEditModal(job)} className="w-full">
-                Edit
+                {tCommon('edit')}
               </Button>
               <Button
                 variant="ghost"
@@ -117,7 +120,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
                 onClick={() => void handleArchiveToggle(job)}
                 className={cn('w-full', job.is_active ? 'text-rose-600 hover:bg-rose-50 hover:text-rose-700' : undefined)}
               >
-                {job.is_active ? 'Archive' : 'Activate'}
+                {job.is_active ? t('archive') : t('activate')}
               </Button>
             </div>
           </Card>
@@ -125,7 +128,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
 
         {filteredJobs.length === 0 ? (
           <Card>
-            <p className="text-sm text-slate-600">No jobs found.</p>
+            <p className="text-sm text-slate-600">{t('noJobsFound')}</p>
           </Card>
         ) : null}
       </div>
@@ -136,11 +139,11 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Rate</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('name')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('description')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('rate')}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">{t('status')}</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600">{t('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -148,7 +151,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
                 <tr key={job.id}>
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">{job.name}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">{job.description ?? '—'}</td>
-                  <td className="px-4 py-3 text-sm text-slate-600">${job.default_price_per_hour.toFixed(2)}/hr</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">${job.default_price_per_hour.toFixed(2)} {t('perHour')}</td>
                   <td className="px-4 py-3">
                     <span
                       className={cn(
@@ -158,13 +161,13 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
                           : 'bg-slate-100 text-slate-600 ring-slate-200',
                       )}
                     >
-                      {job.is_active ? 'Active' : 'Archived'}
+                      {job.is_active ? t('activeStatus') : t('archivedStatus')}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="secondary" onClick={() => openEditModal(job)}>
-                        Edit
+                        {tCommon('edit')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -172,7 +175,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
                         onClick={() => void handleArchiveToggle(job)}
                         className={job.is_active ? 'text-rose-600 hover:bg-rose-50 hover:text-rose-700' : undefined}
                       >
-                        {job.is_active ? 'Archive' : 'Activate'}
+                        {job.is_active ? t('archive') : t('activate')}
                       </Button>
                     </div>
                   </td>
@@ -181,7 +184,7 @@ export function JobsTable({ initialJobs }: JobsTableProps) {
             </tbody>
           </table>
 
-          {filteredJobs.length === 0 ? <p className="px-4 py-5 text-sm text-slate-600">No jobs found.</p> : null}
+          {filteredJobs.length === 0 ? <p className="px-4 py-5 text-sm text-slate-600">{t('noJobsFound')}</p> : null}
         </div>
       </Card>
 

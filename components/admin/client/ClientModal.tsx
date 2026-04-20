@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 
 import type { Client, ClientHome } from '@/types'
@@ -54,6 +55,8 @@ type HomeFormProps = {
 }
 
 function HomeForm({ defaultValues, onSubmit, onCancel, isLoading }: HomeFormProps) {
+  const t = useTranslations('clients')
+  const tCommon = useTranslations('common')
   const {
     register,
     handleSubmit,
@@ -70,20 +73,20 @@ function HomeForm({ defaultValues, onSubmit, onCancel, isLoading }: HomeFormProp
 
   return (
     <div className="space-y-2">
-      <Input label="Label" {...register('label')} />
-      <Input label="Street" error={errors.street?.message} {...register('street')} />
+      <Input label={t('labelField')} {...register('label')} />
+      <Input label={t('streetField')} error={errors.street?.message} {...register('street')} />
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Input label="City" {...register('city')} />
-        <Input label="State" {...register('state')} />
-        <Input label="Postal code" {...register('postal_code')} />
-        <Input label="Country" {...register('country')} />
+        <Input label={t('cityField')} {...register('city')} />
+        <Input label={t('stateField')} {...register('state')} />
+        <Input label={t('postalCodeField')} {...register('postal_code')} />
+        <Input label={t('countryField')} {...register('country')} />
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading || isSubmitting}>
-          Cancel
+          {tCommon('cancel')}
         </Button>
         <Button type="button" onClick={handleSubmit(onSubmit)} isLoading={isLoading || isSubmitting}>
-          Save Home
+          {t('saveHome')}
         </Button>
       </div>
     </div>
@@ -91,6 +94,8 @@ function HomeForm({ defaultValues, onSubmit, onCancel, isLoading }: HomeFormProp
 }
 
 export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalProps) {
+  const t = useTranslations('clients')
+  const tCommon = useTranslations('common')
   const modalRef = useRef<HTMLDivElement>(null)
   const [currentClient, setCurrentClient] = useState<Client | null>(client ?? null)
   const [isSaving, setIsSaving] = useState(false)
@@ -195,7 +200,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
         console.error('Failed to fetch homes', error)
         if (!cancelled) {
           setHomes([])
-          setHomeError('Failed to load homes. Please try again.')
+          setHomeError(t('failedToLoadHomes'))
         }
       } finally {
         if (!cancelled) {
@@ -252,7 +257,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       })
     } catch (error) {
       console.error('Failed to add home', error)
-      setHomeError('Failed to add home. Please try again.')
+      setHomeError(t('failedToAddHome'))
     }
   }
 
@@ -288,7 +293,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       setEditingHomeId(null)
     } catch (error) {
       console.error('Failed to update home', error)
-      setHomeError('Failed to update home. Please try again.')
+      setHomeError(t('failedToUpdateHome'))
     }
   }
 
@@ -328,7 +333,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       setDeletingHomeId(null)
     } catch (error) {
       console.error('Failed to delete home', error)
-      setHomeError('Failed to delete home. Please try again.')
+      setHomeError(t('failedToDeleteHome'))
     }
   }
 
@@ -362,7 +367,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       setHomes(refreshedHomes)
     } catch (error) {
       console.error('Failed to set primary home', error)
-      setHomeError('Failed to set primary home. Please try again.')
+      setHomeError(t('failedToSetPrimary'))
     }
   }
 
@@ -478,7 +483,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
             setShowCreateHomeForm(false)
             setAddHomeDefaults(createHomeValues)
             setShowAddHomeForm(true)
-            setHomeError('Client saved, but failed to add home. Please try again.')
+            setHomeError(t('savedButFailedToAddHome'))
             onSaved(savedClient)
             return
           }
@@ -489,7 +494,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
       onClose()
     } catch (error) {
       console.error('Failed to save client', error)
-      setErrorMessage('Failed to save client. Please try again.')
+      setErrorMessage(t('failedToSave'))
     } finally {
       setIsSaving(false)
     }
@@ -512,7 +517,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-10 sm:h-auto sm:max-h-[calc(100%-5rem)] sm:w-[min(700px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">{currentClient ? 'Edit Client' : 'Add Client'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{currentClient ? t('editClient') : t('addClient')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -531,13 +536,13 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</div>
             ) : null}
 
-            <Input label="Full name" error={errors.full_name?.message} {...register('full_name')} />
-            <Input label="Email" type="email" error={errors.email?.message} {...register('email')} />
-            <Input label="Phone" {...register('phone')} />
+            <Input label={t('fullNameLabel')} error={errors.full_name?.message} {...register('full_name')} />
+            <Input label={t('email')} type="email" error={errors.email?.message} {...register('email')} />
+            <Input label={t('phone')} {...register('phone')} />
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Homes</p>
+                <p className="text-sm font-medium text-slate-700">{t('homesLabel')}</p>
                 {currentClient?.id ? (
                   <button
                     type="button"
@@ -556,7 +561,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                     }}
                     className="text-sm font-medium text-brand-600 hover:text-brand-700"
                   >
-                    + Add home
+                    {t('addHomeBtn')}
                   </button>
                 ) : null}
               </div>
@@ -583,18 +588,18 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                     }}
                     className="text-sm font-medium text-brand-600 hover:text-brand-700"
                   >
-                    {showCreateHomeForm ? 'Remove home address' : '+ Add a home address'}
+                    {showCreateHomeForm ? t('removeHomeAddress') : t('addHomeAddress')}
                   </button>
 
                   {showCreateHomeForm ? (
                     <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <Input label="Label" {...registerCreateHome('label')} />
-                      <Input label="Street" {...registerCreateHome('street')} />
+                      <Input label={t('labelField')} {...registerCreateHome('label')} />
+                      <Input label={t('streetField')} {...registerCreateHome('street')} />
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <Input label="City" {...registerCreateHome('city')} />
-                        <Input label="State" {...registerCreateHome('state')} />
-                        <Input label="Postal code" {...registerCreateHome('postal_code')} />
-                        <Input label="Country" {...registerCreateHome('country')} />
+                        <Input label={t('cityField')} {...registerCreateHome('city')} />
+                        <Input label={t('stateField')} {...registerCreateHome('state')} />
+                        <Input label={t('postalCodeField')} {...registerCreateHome('postal_code')} />
+                        <Input label={t('countryField')} {...registerCreateHome('country')} />
                       </div>
                       <label className="flex cursor-pointer items-center gap-2">
                         <input
@@ -602,22 +607,22 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                           className="h-4 w-4 rounded border-slate-300 accent-brand-600"
                           {...registerCreateHome('is_primary')}
                         />
-                        <span className="text-sm text-slate-700">Set as primary home</span>
+                        <span className="text-sm text-slate-700">{t('setAsPrimary')}</span>
                       </label>
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500">Save the client first to add homes.</p>
+                    <p className="text-sm text-slate-500">{t('saveClientFirst')}</p>
                   )}
                 </div>
               ) : isLoadingHomes ? (
-                <p className="text-sm text-slate-500">Loading homes...</p>
+                <p className="text-sm text-slate-500">{t('loadingHomes')}</p>
               ) : (
                 <>
                   {homeError ? (
                     <div className="mb-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{homeError}</div>
                   ) : null}
 
-                  {homes.length === 0 && !showAddHomeForm ? <p className="text-sm text-slate-500">No homes added yet.</p> : null}
+                  {homes.length === 0 && !showAddHomeForm ? <p className="text-sm text-slate-500">{t('noHomesAdded')}</p> : null}
 
                   <div className="space-y-2">
                     {homes.map((home) => (
@@ -640,7 +645,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               {home.is_primary ? (
-                                <span className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">Primary</span>
+                                <span className="mb-1 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">{t('primaryBadge')}</span>
                               ) : null}
                               {home.label ? <p className="text-sm font-medium text-slate-900">{home.label}</p> : null}
                               <p className="text-sm text-slate-700">{home.street}</p>
@@ -655,7 +660,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                                   onClick={() => void setPrimary(home.id)}
                                   className="text-xs text-slate-500 hover:text-slate-700"
                                 >
-                                  Set primary
+                                  {t('setPrimaryBtn')}
                                 </button>
                               ) : null}
                               <button
@@ -666,7 +671,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                                 }}
                                 className="text-xs text-brand-600 hover:text-brand-700"
                               >
-                                Edit
+                                {tCommon('edit')}
                               </button>
                               {deletingHomeId === home.id ? (
                                 <div className="flex gap-1">
@@ -675,14 +680,14 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                                     onClick={() => void deleteHome(home.id)}
                                     className="text-xs font-medium text-rose-600 hover:text-rose-700"
                                   >
-                                    Confirm
+                                    {tCommon('confirm')}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => setDeletingHomeId(null)}
                                     className="text-xs text-slate-500 hover:text-slate-700"
                                   >
-                                    Cancel
+                                    {tCommon('cancel')}
                                   </button>
                                 </div>
                               ) : (
@@ -694,7 +699,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
                                   }}
                                   className="text-xs text-rose-600 hover:text-rose-700"
                                 >
-                                  Delete
+                                  {tCommon('delete')}
                                 </button>
                               )}
                             </div>
@@ -731,7 +736,7 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
 
             <div>
               <label htmlFor="client_notes" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Notes
+                {t('notes')}
               </label>
               <textarea
                 id="client_notes"
@@ -746,10 +751,10 @@ export function ClientModal({ isOpen, onClose, onSaved, client }: ClientModalPro
             <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button variant="secondary" onClick={onClose} disabled={isSaving}>
-                  Cancel
+                  {tCommon('cancel')}
                 </Button>
                 <Button type="submit" isLoading={isSaving}>
-                  Save Client
+                  {t('saveClient')}
                 </Button>
               </div>
             </div>

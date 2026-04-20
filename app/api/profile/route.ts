@@ -3,9 +3,15 @@ import { z } from 'zod'
 import { badRequest, forbidden, getSessionAndRole, serverError } from '@/lib/api/auth'
 import { createClient } from '@/lib/supabase/server'
 
+const SUPPORTED_LOCALES = ['en', 'es', 'pt-BR'] as const
+
 const updateProfileSchema = z.object({
-  full_name: z.string().trim().min(1, 'Name is required'),
-})
+  full_name: z.string().trim().min(1, 'Name is required').optional(),
+  locale: z.enum(SUPPORTED_LOCALES).optional(),
+}).refine(
+  (data) => data.full_name !== undefined || data.locale !== undefined,
+  { message: 'At least one field must be provided' }
+)
 
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -38,14 +44,23 @@ export async function PATCH(request: Request) {
   }
 
   const supabase = await createClient()
+  const updatePayload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (parsed.data.full_name !== undefined) {
+    updatePayload.full_name = parsed.data.full_name
+  }
+
+  if (parsed.data.locale !== undefined) {
+    updatePayload.locale = parsed.data.locale
+  }
+
   const { data, error } = await supabase
     .from('profiles')
-    .update({
-      full_name: parsed.data.full_name,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', session.userId)
-    .select('id, full_name, updated_at')
+    .select('id, full_name, locale, updated_at')
     .single()
 
   if (error) {

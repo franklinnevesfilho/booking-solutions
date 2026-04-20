@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/Button'
@@ -30,6 +31,8 @@ const employeeEmailSchema = z.object({
 type EmployeeEmailFormValues = z.infer<typeof employeeEmailSchema>
 
 export function EmployeeEmailModal({ isOpen, employee, onClose, onUpdated }: EmployeeEmailModalProps) {
+  const t = useTranslations('employees')
+  const tCommon = useTranslations('common')
   const modalRef = useRef<HTMLDivElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -136,7 +139,7 @@ export function EmployeeEmailModal({ isOpen, employee, onClose, onUpdated }: Emp
       })
 
       if (response.status === 409) {
-        setErrorMessage('This email is already in use by another account.')
+        setErrorMessage(t('emailInUse'))
         return
       }
 
@@ -144,14 +147,14 @@ export function EmployeeEmailModal({ isOpen, employee, onClose, onUpdated }: Emp
         throw new Error('Failed to update employee email')
       }
 
-      setSuccessMessage('Email updated successfully.')
+      setSuccessMessage(t('emailUpdated'))
       onUpdated()
       reset({
         email: '',
       })
     } catch (error) {
       console.error('Failed to update employee email', error)
-      setErrorMessage('Failed to update email. Please try again.')
+      setErrorMessage(t('failedToChangeEmail'))
     } finally {
       setIsSubmitting(false)
     }
@@ -174,7 +177,7 @@ export function EmployeeEmailModal({ isOpen, employee, onClose, onUpdated }: Emp
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-10 sm:h-auto sm:w-[min(560px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">Change Email</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t('changeEmailTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -197,16 +200,16 @@ export function EmployeeEmailModal({ isOpen, employee, onClose, onUpdated }: Emp
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</div>
             ) : null}
 
-            <Input label="Email" type="email" placeholder="employee@example.com" error={errors.email?.message} {...register('email')} />
+            <Input label={t('newEmailLabel')} type="email" placeholder="employee@example.com" error={errors.email?.message} {...register('email')} />
           </div>
 
           <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button type="submit" isLoading={isSubmitting}>
-                Update Email
+                {isSubmitting ? t('changingEmail') : t('changeEmail')}
               </Button>
             </div>
           </div>

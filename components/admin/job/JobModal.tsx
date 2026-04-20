@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 
 import type { Job } from '@/types'
@@ -39,6 +40,8 @@ function defaultValues(job?: Job | null): JobFormValues {
 }
 
 export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
+  const t = useTranslations('jobs')
+  const tCommon = useTranslations('common')
   const modalRef = useRef<HTMLDivElement>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -152,7 +155,7 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
       onSaved(savedJob)
     } catch (error) {
       console.error('Failed to save job', error)
-      setErrorMessage('Failed to save job. Please try again.')
+      setErrorMessage(t('failedToSave'))
     } finally {
       setIsSaving(false)
     }
@@ -175,7 +178,7 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-10 sm:h-auto sm:max-h-[calc(100%-5rem)] sm:w-[min(480px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">{job ? 'Edit Job' : 'Add Job'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{job ? t('editTitle') : t('addTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -194,11 +197,11 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
               <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</div>
             ) : null}
 
-            <Input label="Job name" error={errors.name?.message} {...register('name')} />
+            <Input label={t('nameLabel')} error={errors.name?.message} {...register('name')} />
 
             <div className="w-full">
               <label htmlFor="job_description" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Description
+                {t('descriptionLabel')}
               </label>
               <textarea
                 id="job_description"
@@ -210,7 +213,7 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
 
             <div className="w-full">
               <label htmlFor="default_price_per_hour" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Price per hour
+                {t('priceLabel')}
               </label>
               <div className={`flex h-11 overflow-hidden rounded-lg border transition focus-within:ring-2 ${errors.default_price_per_hour ? 'border-rose-500 focus-within:border-rose-500 focus-within:ring-rose-200' : 'border-slate-300 focus-within:border-brand-500 focus-within:ring-brand-200'}`}>
                 <span className="flex items-center border-r border-slate-300 bg-slate-50 px-3 text-sm font-medium text-slate-500">
@@ -240,7 +243,7 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
                   {...register('is_active')}
                 />
                 <label htmlFor="job_is_active" className="text-sm font-medium text-slate-700">
-                  Active
+                  {t('activeToggle')}
                 </label>
               </div>
             ) : null}
@@ -249,10 +252,10 @@ export function JobModal({ isOpen, onClose, onSaved, job }: JobModalProps) {
           <div className="sticky bottom-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button variant="secondary" onClick={onClose} disabled={isSaving}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button type="submit" isLoading={isSaving}>
-                Save Job
+                {t('saveJob')}
               </Button>
             </div>
           </div>

@@ -1,3 +1,5 @@
+import { getTranslations } from 'next-intl/server'
+
 import { InvoicesTable } from '@/components/admin/invoice/InvoicesTable'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { getInvoicesWithDetails } from '@/lib/api/invoices'
@@ -5,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { InvoiceWithDetails } from '@/types'
 
 export default async function AdminInvoicesPage() {
+  const t = await getTranslations('invoices')
   const supabase = await createClient()
 
   let invoices: InvoiceWithDetails[] = []
@@ -17,7 +20,7 @@ export default async function AdminInvoicesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Invoices" />
+      <PageHeader title={t('title')} />
       <InvoicesTable initialInvoices={invoices} />
     </div>
   )

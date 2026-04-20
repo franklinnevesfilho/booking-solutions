@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 import NextTopLoader from 'nextjs-toploader'
 
 import './globals.css'
@@ -14,16 +16,21 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const locale = await getLocale()
+  const messages = await getMessages()
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className="font-sans antialiased">
-        <NextTopLoader color="#15803d" showSpinner={false} />
-        {children}
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <NextTopLoader color="#15803d" showSpinner={false} />
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   )

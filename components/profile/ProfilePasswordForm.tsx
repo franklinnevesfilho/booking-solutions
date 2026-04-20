@@ -1,6 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -9,23 +10,24 @@ import { Button } from '@/components/ui/Button'
 import { PasswordInput } from '@/components/ui/PasswordInput'
 import { createClient } from '@/lib/supabase/client'
 
-const profilePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword: z.string().min(8, 'Must be at least 8 characters'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: 'Passwords do not match.',
-    path: ['confirmPassword'],
-  })
-
-type ProfilePasswordValues = z.infer<typeof profilePasswordSchema>
-
 export function ProfilePasswordForm() {
+  const t = useTranslations('profile')
   const supabase = createClient()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const profilePasswordSchema = z
+    .object({
+      currentPassword: z.string().min(1, t('currentPasswordRequired')),
+      newPassword: z.string().min(8, t('passwordMinLength')),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: t('passwordsDoNotMatch'),
+      path: ['confirmPassword'],
+    })
+
+  type ProfilePasswordValues = z.infer<typeof profilePasswordSchema>
 
   const {
     register,
@@ -50,7 +52,7 @@ export function ProfilePasswordForm() {
     } = await supabase.auth.getUser()
 
     if (!user?.email) {
-      setErrorMessage('Unable to update password. Please try again.')
+      setErrorMessage(t('unableToUpdatePassword'))
       return
     }
 
@@ -60,7 +62,7 @@ export function ProfilePasswordForm() {
     })
 
     if (signInError) {
-      setErrorMessage('Current password is incorrect.')
+      setErrorMessage(t('currentPasswordIncorrect'))
       return
     }
 
@@ -68,35 +70,35 @@ export function ProfilePasswordForm() {
       const { error } = await supabase.auth.updateUser({ password: values.newPassword })
 
       if (error) {
-        setErrorMessage('Unable to update password. Please try again.')
+        setErrorMessage(t('unableToUpdatePassword'))
         return
       }
 
       reset()
-      setSuccessMessage('Password updated successfully.')
+      setSuccessMessage(t('passwordUpdatedSuccessfully'))
     } catch {
-      setErrorMessage('Unable to update password. Please try again.')
+      setErrorMessage(t('unableToUpdatePassword'))
     }
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <PasswordInput
-        label="Current password"
+        label={t('currentPassword')}
         autoComplete="current-password"
         error={errors.currentPassword?.message}
         {...register('currentPassword')}
       />
 
       <PasswordInput
-        label="New Password"
+        label={t('newPassword')}
         autoComplete="new-password"
         error={errors.newPassword?.message}
         {...register('newPassword')}
       />
 
       <PasswordInput
-        label="Confirm New Password"
+        label={t('confirmPassword')}
         autoComplete="new-password"
         error={errors.confirmPassword?.message}
         {...register('confirmPassword')}
@@ -106,7 +108,7 @@ export function ProfilePasswordForm() {
       {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
 
       <Button type="submit" isLoading={isSubmitting} className="w-full sm:w-auto">
-        Update Password
+        {t('updatePassword')}
       </Button>
     </form>
   )

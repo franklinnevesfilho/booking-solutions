@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 
 import { ProfileNameForm } from '@/components/profile/ProfileNameForm'
 import { ProfilePasswordForm } from '@/components/profile/ProfilePasswordForm'
@@ -7,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function EmployeeProfilePage() {
+  const t = await getTranslations('profile')
   const supabase = await createClient()
 
   const {
@@ -45,23 +47,23 @@ export default async function EmployeeProfilePage() {
               clipRule="evenodd"
             />
           </svg>
-          Back to schedule
+          {t('backToSchedule')}
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Profile</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{t('myProfile')}</h1>
       </div>
 
       <Card>
         <div className="mb-5 space-y-1">
-          <h2 className="text-lg font-semibold text-slate-900">Account Details</h2>
-          <p className="text-sm text-slate-600">Update how your name appears in the employee portal.</p>
+          <h2 className="text-lg font-semibold text-slate-900">{t('accountDetails')}</h2>
+          <p className="text-sm text-slate-600">{t('accountDetailsDesc')}</p>
         </div>
         <ProfileNameForm defaultFullName={profile.full_name ?? ''} />
       </Card>
 
       <Card>
         <div className="mb-5 space-y-1">
-          <h2 className="text-lg font-semibold text-slate-900">Change Password</h2>
-          <p className="text-sm text-slate-600">Choose a new password with at least 8 characters.</p>
+          <h2 className="text-lg font-semibold text-slate-900">{t('changePassword')}</h2>
+          <p className="text-sm text-slate-600">{t('changePasswordDesc')}</p>
         </div>
         <ProfilePasswordForm />
       </Card>

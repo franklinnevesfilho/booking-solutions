@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 
 import type { AppointmentWithDetails, Invoice, Client, ClientHome, Job, Profile } from '@/types'
@@ -142,16 +143,6 @@ const appointmentSchema = z
 
 type AppointmentFormValues = z.infer<typeof appointmentSchema>
 
-const weekdayLabels = [
-  { label: 'Mon', value: 0 },
-  { label: 'Tue', value: 1 },
-  { label: 'Wed', value: 2 },
-  { label: 'Thu', value: 3 },
-  { label: 'Fri', value: 4 },
-  { label: 'Sat', value: 5 },
-  { label: 'Sun', value: 6 },
-]
-
 const byDayTokens = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
 
 function toDatetimeLocal(value: string) {
@@ -272,6 +263,8 @@ export function AppointmentModal({
   defaultStart,
   defaultEnd,
 }: AppointmentModalProps) {
+  const t = useTranslations('appointments')
+  const tCommon = useTranslations('common')
   const modalRef = useRef<HTMLDivElement>(null)
   const employeeDropdownRef = useRef<HTMLDivElement>(null)
   const invoiceAmountLoadedRef = useRef(false)
@@ -318,6 +311,16 @@ export function AppointmentModal({
   const watchedDiscountAmount = watch('discount_amount')
 
   const weeklyDayError = errors.weeklyDays?.message
+
+  const weekdayLabels = [
+    { label: t('weekdayMon'), value: 0 },
+    { label: t('weekdayTue'), value: 1 },
+    { label: t('weekdayWed'), value: 2 },
+    { label: t('weekdayThu'), value: 3 },
+    { label: t('weekdayFri'), value: 4 },
+    { label: t('weekdaySat'), value: 5 },
+    { label: t('weekdaySun'), value: 6 },
+  ]
 
   useEffect(() => {
     console.log('[AppointmentModal] reset', {
@@ -441,7 +444,7 @@ export function AppointmentModal({
         setEmployees(employeesData)
       } catch (error) {
         console.error('Failed to load appointment form options', error)
-        setErrorMessage('Unable to load clients and employees right now.')
+        setErrorMessage(t('loadError'))
       } finally {
         setIsLoadingOptions(false)
       }
@@ -530,10 +533,10 @@ export function AppointmentModal({
   const selectedEmployees = sortedEmployees.filter((employee) => selectedEmployeeIds.includes(employee.id))
   const triggerLabel =
     selectedEmployees.length === 0
-      ? 'Select employees...'
+      ? t('selectEmployees')
       : selectedEmployees.length <= 2
         ? selectedEmployees.map((employee) => employee.full_name).join(', ')
-        : `${selectedEmployees.length} employees selected`
+        : t('employeesSelected', { count: selectedEmployees.length })
 
   if (!isOpen) {
     return null
@@ -630,7 +633,7 @@ export function AppointmentModal({
       onClose()
     } catch (error) {
       console.error('Failed to save appointment', error)
-      setErrorMessage('Failed to save appointment. Please try again.')
+      setErrorMessage(t('saveError'))
     } finally {
       setIsSaving(false)
     }
@@ -658,7 +661,7 @@ export function AppointmentModal({
       onClose()
     } catch (error) {
       console.error('Failed to delete appointment', error)
-      setErrorMessage('Failed to delete appointment. Please try again.')
+      setErrorMessage(t('deleteError'))
     } finally {
       setIsDeleting(false)
       setShowDeleteScopePrompt(false)
@@ -682,7 +685,7 @@ export function AppointmentModal({
         className="relative ml-auto flex h-full w-full flex-col bg-white shadow-xl sm:mx-auto sm:my-8 sm:h-[calc(100%-4rem)] sm:max-h-[920px] sm:w-[min(840px,95vw)] sm:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
-          <h2 className="text-lg font-semibold text-slate-900">{isEditMode ? 'Edit Appointment' : 'New Appointment'}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">{isEditMode ? t('editTitle') : t('newTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -705,16 +708,16 @@ export function AppointmentModal({
               <div className="flex flex-1 items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-3 text-slate-500">
                   <Spinner className="h-8 w-8" />
-                  <p className="text-sm">Loading appointment details…</p>
+                  <p className="text-sm">{t('loadingDetails')}</p>
                 </div>
               </div>
             ) : (
               <>
-                <Input label="Title" placeholder="Kitchen + living room clean" error={errors.title?.message} {...register('title')} />
+                <Input label={t('titleLabel')} placeholder={t('titlePlaceholder')} error={errors.title?.message} {...register('title')} />
 
             <div>
               <label htmlFor="job_id" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Job <span className="text-red-500">*</span>
+                {t('jobLabel')} <span className="text-red-500">*</span>
               </label>
               <SearchableSelect
                 options={jobs.map((job) => ({
@@ -723,7 +726,7 @@ export function AppointmentModal({
                 }))}
                 value={watchedJobId ?? ''}
                 onChange={(id) => setValue('job_id', id, { shouldValidate: true })}
-                placeholder="Select a job"
+                placeholder={t('selectJob')}
                 disabled={isLoadingJobs}
               />
               {errors.job_id ? <p className="mt-1.5 text-sm text-rose-600">{errors.job_id.message}</p> : null}
@@ -731,13 +734,13 @@ export function AppointmentModal({
 
             <div>
               <label htmlFor="client_id" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Client
+                {t('clientLabel')}
               </label>
               <SearchableSelect
                 options={sortedClients.map((client) => ({ id: client.id, label: client.full_name }))}
                 value={clientId ?? ''}
                 onChange={(id) => setValue('client_id', id)}
-                placeholder="Unassigned"
+                placeholder={t('clientPlaceholder')}
               />
             </div>
 
@@ -745,17 +748,17 @@ export function AppointmentModal({
               <div>
                 {isLoadingHomes ? (
                   <div className="flex h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-500">
-                    Loading homes...
+                    {t('loadingHomes')}
                   </div>
                 ) : homes.length === 0 ? (
-                  <p className="mt-1 text-xs text-slate-500">No homes on file for this client</p>
+                  <p className="mt-1 text-xs text-slate-500">{t('noHomesOnFile')}</p>
                 ) : (
                   <>
                     <label htmlFor="home_id" className="mb-1.5 block text-sm font-medium text-slate-700">
-                      Home
+                      {t('homeLabel')}
                       {homes.length > 1 ? (
                         <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                          {homes.length} homes
+                          {t('homesCount', { count: homes.length })}
                         </span>
                       ) : null}
                     </label>
@@ -766,15 +769,15 @@ export function AppointmentModal({
                       }))}
                       value={watchedHomeId ?? ''}
                       onChange={(id) => setValue('home_id', id)}
-                      placeholder="Select a home"
+                      placeholder={t('selectHome')}
                       disabled={homes.length === 1}
                     />
                     {homes.length === 1 ? (
-                      <p className="mt-1 text-xs text-slate-500">This client has 1 home on file - it&apos;s pre-selected.</p>
+                      <p className="mt-1 text-xs text-slate-500">{t('oneHomeNote')}</p>
                     ) : null}
                     {homes.length > 1 ? (
                       <p className="mt-1 text-xs text-amber-700">
-                        This client has multiple homes - please select the correct one.
+                        {t('multipleHomesNote')}
                       </p>
                     ) : null}
                   </>
@@ -785,20 +788,20 @@ export function AppointmentModal({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 type="datetime-local"
-                label="Start date & time"
+                label={t('startLabel')}
                 error={errors.start_time?.message}
                 {...register('start_time')}
               />
               <Input
                 type="datetime-local"
-                label="End date & time"
+                label={t('endLabel')}
                 error={errors.end_time?.message}
                 {...register('end_time')}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700">Assigned employees</label>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">{t('employeesLabel')}</label>
               <div ref={employeeDropdownRef} className="relative">
                 <button
                   type="button"
@@ -818,7 +821,7 @@ export function AppointmentModal({
                 {employeeDropdownOpen ? (
                   <div className="absolute left-0 right-0 z-50 mt-1 max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
                     {sortedEmployees.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-slate-500">No employees found.</p>
+                      <p className="px-3 py-2 text-sm text-slate-500">{t('noEmployeesFound')}</p>
                     ) : (
                       sortedEmployees.map((employee) => {
                         const checked = selectedEmployeeIds.includes(employee.id)
@@ -848,13 +851,13 @@ export function AppointmentModal({
 
             <div>
               <label htmlFor="notes" className="mb-1.5 block text-sm font-medium text-slate-700">
-                Notes
+                {t('notesLabel')}
               </label>
               <textarea
                 id="notes"
                 rows={4}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                placeholder="Any special instructions or supplies needed"
+                placeholder={t('notesPlaceholder')}
                 {...register('notes')}
               />
             </div>
@@ -862,17 +865,17 @@ export function AppointmentModal({
             {isEditMode ? (
               <div>
                 <label htmlFor="status" className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Status
+                  {t('statusLabel')}
                 </label>
                 <SearchableSelect
                   options={[
-                    { id: 'scheduled', label: 'Scheduled' },
-                    { id: 'completed', label: 'Completed' },
-                    { id: 'cancelled', label: 'Cancelled' },
+                    { id: 'scheduled', label: t('statusScheduled') },
+                    { id: 'completed', label: t('statusCompleted') },
+                    { id: 'cancelled', label: t('statusCancelled') },
                   ]}
                   value={watchedStatus ?? ''}
                   onChange={(id) => setValue('status', id as 'scheduled' | 'completed' | 'cancelled')}
-                  placeholder="Select status"
+                  placeholder={t('selectStatus')}
                 />
               </div>
             ) : (
@@ -883,8 +886,8 @@ export function AppointmentModal({
                   onClick={() => setValue('doesRepeat', !doesRepeat, { shouldValidate: true })}
                   aria-expanded={doesRepeat}
                 >
-                  <span>Does this repeat?</span>
-                  <span>{doesRepeat ? 'Yes' : 'No'}</span>
+                  <span>{t('doesRepeat')}</span>
+                  <span>{doesRepeat ? t('yes') : t('no')}</span>
                 </button>
 
                 {doesRepeat ? (
@@ -898,7 +901,7 @@ export function AppointmentModal({
                           onChange={() => setValue('repeatType', 'daily', { shouldValidate: true })}
                           className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
                         />
-                        Daily
+                        {t('daily')}
                       </label>
                       <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
                         <input
@@ -908,13 +911,13 @@ export function AppointmentModal({
                           onChange={() => setValue('repeatType', 'weekly', { shouldValidate: true })}
                           className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
                         />
-                        Weekly
+                        {t('weekly')}
                       </label>
                     </div>
 
                     {repeatType === 'weekly' ? (
                       <div>
-                        <p className="mb-2 text-sm font-medium text-slate-700">Repeat on days</p>
+                        <p className="mb-2 text-sm font-medium text-slate-700">{t('repeatOnDays')}</p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                           {weekdayLabels.map((weekday) => {
                             const checked = watch('weeklyDays').includes(weekday.value)
@@ -944,12 +947,12 @@ export function AppointmentModal({
             )}
 
             <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <h3 className="text-sm font-semibold text-slate-700">Pricing</h3>
+              <h3 className="text-sm font-semibold text-slate-700">{t('pricingTitle')}</h3>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label htmlFor="amount_charged" className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Amount charged
+                    {t('amountCharged')}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
@@ -968,7 +971,7 @@ export function AppointmentModal({
 
                 <div>
                   <label htmlFor="discount_amount" className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Discount
+                    {t('discount')}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">$</span>
@@ -989,14 +992,14 @@ export function AppointmentModal({
               {(watchedDiscountAmount ?? 0) > 0 ? (
                 <div>
                   <label htmlFor="discount_reason" className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Discount reason <span className="text-red-500">*</span>
+                    {t('discountReason')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     id="discount_reason"
                     type="text"
                     {...register('discount_reason')}
                     className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                    placeholder="e.g. Loyalty discount"
+                    placeholder={t('discountReasonPlaceholder')}
                   />
                   {errors.discount_reason ? <p className="mt-1.5 text-sm text-rose-600">{errors.discount_reason.message}</p> : null}
                 </div>
@@ -1004,7 +1007,7 @@ export function AppointmentModal({
 
               {watchedAmountCharged !== undefined ? (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">Net amount</span>
+                  <span className="text-slate-600">{t('netAmount')}</span>
                   <span className="font-semibold text-slate-900">
                     ${((Number(watchedAmountCharged) || 0) - (Number(watchedDiscountAmount) || 0)).toFixed(2)}
                   </span>
@@ -1017,13 +1020,13 @@ export function AppointmentModal({
                   {...register('is_paid')}
                   className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
-                <span className="text-sm text-slate-700">Mark as paid</span>
+                <span className="text-sm text-slate-700">{t('markAsPaid')}</span>
               </label>
             </div>
 
             {isEditMode && hasSeries ? (
               <fieldset className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <legend className="px-1 text-sm font-medium text-slate-700">Edit scope</legend>
+                <legend className="px-1 text-sm font-medium text-slate-700">{t('editScope')}</legend>
                 <div className="space-y-2">
                   <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
                     <input
@@ -1033,7 +1036,7 @@ export function AppointmentModal({
                       onChange={() => setValue('editScope', 'single')}
                       className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
                     />
-                    Edit this appointment only
+                    {t('editSingle')}
                   </label>
                   <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
                     <input
@@ -1043,7 +1046,7 @@ export function AppointmentModal({
                       onChange={() => setValue('editScope', 'series')}
                       className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
                     />
-                    Edit all in series
+                    {t('editSeries')}
                   </label>
                 </div>
               </fieldset>
@@ -1051,17 +1054,17 @@ export function AppointmentModal({
 
             {showDeleteScopePrompt ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm font-medium text-amber-900">Delete recurring appointment</p>
-                <p className="mt-1 text-sm text-amber-800">Choose whether to remove just this event or every event in this series.</p>
+                <p className="text-sm font-medium text-amber-900">{t('deleteRecurring')}</p>
+                <p className="mt-1 text-sm text-amber-800">{t('deleteRecurringDesc')}</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <Button variant="danger" className="w-full" isLoading={isDeleting} onClick={() => void runDelete('single')}>
-                    Delete only this event
+                    {t('deleteOnlyThis')}
                   </Button>
                   <Button variant="danger" className="w-full" isLoading={isDeleting} onClick={() => void runDelete('series')}>
-                    Delete all events in series
+                    {t('deleteAllInSeries')}
                   </Button>
                   <Button variant="secondary" className="w-full sm:w-auto" onClick={() => setShowDeleteScopePrompt(false)}>
-                    Cancel
+                    {tCommon('cancel')}
                   </Button>
                 </div>
               </div>
@@ -1074,7 +1077,7 @@ export function AppointmentModal({
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <Button variant="secondary" className="w-full" onClick={onClose} disabled={isSaving || isDeleting}>
-                  Cancel
+                  {tCommon('cancel')}
                 </Button>
                 {isEditMode ? (
                   <Button
@@ -1091,13 +1094,13 @@ export function AppointmentModal({
                       void runDelete('single')
                     }}
                   >
-                    Delete
+                    {tCommon('delete')}
                   </Button>
                 ) : null}
               </div>
 
               <Button type="submit" className="w-full" isLoading={isSaving} disabled={isDeleting}>
-                Save
+                {tCommon('save')}
               </Button>
             </div>
           </div>
