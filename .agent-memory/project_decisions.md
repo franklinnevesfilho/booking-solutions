@@ -81,3 +81,22 @@ Run in this order in Supabase SQL editor:
 - Drag-and-drop: disabled on mobile
 - Touch targets: 44px minimum height/width on all interactive elements
 - Modals: full-screen (`fixed inset-0`) on mobile, max-w constrained on desktop
+
+## Set Password Landing State — 2026-04-20
+
+### Facts
+- `app/(auth)/set-password/page.tsx` now shows a landing state with two actions before revealing the password form.
+- `isCheckingAuth` is handled in a dedicated loading branch, separate from the form render.
+
+### Decision
+- Keep authenticated set-password entry split into three explicit UI states: loading, landing, and form.
+
+### Consequences
+- The password form is only shown after an explicit user action, while unauthenticated users still redirect through the existing session check.
+
+### Citations
+- `app/(auth)/set-password/page.tsx`
+
+### memory_meta
+- timestamp: 2026-04-20
+- author: GitHub Copilot

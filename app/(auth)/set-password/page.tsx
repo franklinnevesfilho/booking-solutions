@@ -32,6 +32,7 @@ export default function SetPasswordPage() {
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
 
   const {
     register,
@@ -96,6 +97,37 @@ export default function SetPasswordPage() {
     router.replace('/')
   }
 
+  if (isCheckingAuth) {
+    return (
+      <Card className="w-full">
+        <div className="mb-6 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">{tCommon('appName')}</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">{t('setPassword')}</h1>
+        </div>
+      </Card>
+    )
+  }
+
+  if (!showForm) {
+    return (
+      <Card className="w-full">
+        <div className="mb-6 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">{tCommon('appName')}</p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">{t('setPassword')}</h1>
+          <p className="mt-2 text-sm text-slate-600">{t('setPasswordSubtitle')}</p>
+        </div>
+        <div className="space-y-3">
+          <Button type="button" className="h-11 w-full text-base" onClick={() => setShowForm(true)}>
+            {t('setPasswordButton')}
+          </Button>
+          <Button type="button" variant="ghost" className="h-11 w-full text-base" onClick={() => router.replace('/')}>
+            {t('goToMainPage')}
+          </Button>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <Card className="w-full">
       <div className="mb-6 text-center">
@@ -109,7 +141,6 @@ export default function SetPasswordPage() {
           label={t('newPasswordLabel')}
           autoComplete="new-password"
           error={errors.password?.message}
-          disabled={isCheckingAuth}
           {...register('password')}
         />
 
@@ -117,13 +148,12 @@ export default function SetPasswordPage() {
           label={t('confirmPasswordLabel')}
           autoComplete="new-password"
           error={errors.confirmPassword?.message}
-          disabled={isCheckingAuth}
           {...register('confirmPassword')}
         />
 
         {serverError ? <p className="text-sm text-rose-600">{serverError}</p> : null}
 
-        <Button type="submit" isLoading={isSubmitting || isCheckingAuth} className="h-11 w-full text-base">
+        <Button type="submit" isLoading={isSubmitting} className="h-11 w-full text-base">
           {t('setPasswordButton')}
         </Button>
       </form>
