@@ -9,13 +9,12 @@ export default function HomePage() {
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
-    if (window.location.hash.includes('type=invite')) {
-      router.replace('/accept-invite' + window.location.hash)
-      return
-    }
-
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
+        if (window.location.hash.includes('type=invite')) {
+          router.replace('/accept-invite' + window.location.hash)
+          return
+        }
         router.replace('/login')
         return
       }
