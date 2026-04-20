@@ -92,11 +92,14 @@ export async function POST(request: Request) {
     return serverError()
   }
 
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/auth/invite`
+
   const { data, error } = await adminClient.auth.admin.inviteUserByEmail(parsed.data.email, {
     data: {
       role: 'employee',
       full_name: parsed.data.full_name,
     },
+    redirectTo,
   })
 
   if (error) {
