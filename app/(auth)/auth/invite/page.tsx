@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 import { createClient } from '@/lib/supabase/client'
 
-export default function AcceptInvitePage() {
+export default function InvitePage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const t = useTranslations('auth')
@@ -28,7 +28,7 @@ export default function AcceptInvitePage() {
         if (error) {
           router.replace('/login?error=invalid_invite')
         } else {
-          router.replace('/set-password')
+          router.replace('/auth/set-password')
         }
       })
   }, [router, supabase])

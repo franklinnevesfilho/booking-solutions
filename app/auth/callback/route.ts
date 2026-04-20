@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
 
   if (token_hash && (type === 'invite' || type === 'recovery')) {
-    const response = NextResponse.redirect(new URL('/set-password', origin))
+    const response = NextResponse.redirect(new URL('/auth/set-password', origin))
 
     // Create client that writes cookies directly onto the redirect response
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {

@@ -12,7 +12,7 @@ export default function HomePage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
         if (window.location.hash.includes('type=invite')) {
-          router.replace('/accept-invite' + window.location.hash)
+          router.replace('/auth/invite' + window.location.hash)
           return
         }
         router.replace('/login')
