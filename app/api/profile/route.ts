@@ -44,7 +44,11 @@ export async function PATCH(request: Request) {
   }
 
   const supabase = await createClient()
-  const updatePayload: Record<string, unknown> = {
+  const updatePayload: {
+    updated_at: string
+    full_name?: string
+    locale?: string
+  } = {
     updated_at: new Date().toISOString(),
   }
 
