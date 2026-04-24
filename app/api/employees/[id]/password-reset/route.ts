@@ -57,7 +57,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return badRequest('Employee has no email address')
   }
 
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/auth/set-password`
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/auth/callback`
 
   try {
     const { error } = await adminClient.auth.resetPasswordForEmail(userData.user.email, { redirectTo })
