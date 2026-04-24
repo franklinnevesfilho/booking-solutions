@@ -30,7 +30,6 @@ type AppointmentApiShape = {
   status: 'scheduled' | 'completed' | 'cancelled'
   notes: string | null
   recurrence_series_id: string | null
-  recurrence_rule: string | null
   is_master: boolean
   created_at: string
   updated_at: string
@@ -96,7 +95,6 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
     status: row.status,
     notes: row.notes,
     recurrence_series_id: row.recurrence_series_id,
-    recurrence_rule: row.recurrence_rule,
     is_master: row.is_master,
     created_at: row.created_at,
     updated_at: row.updated_at,

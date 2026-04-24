@@ -1,4 +1,4 @@
-import type { Appointment, Invoice, Client, ClientHome, Job, Profile } from './models'
+import type { Appointment, Invoice, Client, ClientHome, Job, Profile, RecurrenceSeries } from './models'
 
 export interface ClientWithHomes extends Client {
   homes: ClientHome[]
@@ -10,6 +10,7 @@ export interface AppointmentWithDetails extends Appointment {
   job: Job | null
   invoice: Invoice | null
   employees: Profile[]
+  recurrence_series?: RecurrenceSeries | null
 }
 
 export type InvoiceWithDetails = Invoice & {

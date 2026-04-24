@@ -54,7 +54,6 @@ export type Database = {
           is_master: boolean
           job_id: string | null
           notes: string | null
-          recurrence_rule: string | null
           recurrence_series_id: string | null
           start_time: string
           status: string
@@ -70,7 +69,6 @@ export type Database = {
           is_master?: boolean
           job_id?: string | null
           notes?: string | null
-          recurrence_rule?: string | null
           recurrence_series_id?: string | null
           start_time: string
           status?: string
@@ -86,7 +84,6 @@ export type Database = {
           is_master?: boolean
           job_id?: string | null
           notes?: string | null
-          recurrence_rule?: string | null
           recurrence_series_id?: string | null
           start_time?: string
           status?: string
@@ -113,6 +110,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_appointments_recurrence_series"
+            columns: ["recurrence_series_id"]
+            isOneToOne: false
+            referencedRelation: "recurrence_series"
             referencedColumns: ["id"]
           },
         ]
@@ -300,6 +304,45 @@ export type Database = {
           locale?: string
           phone?: string | null
           role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recurrence_series: {
+        Row: {
+          id: string
+          rrule: string
+          dtstart: string
+          duration_ms: number
+          horizon_date: string
+          end_condition: string
+          end_date: string | null
+          max_count: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          rrule: string
+          dtstart: string
+          duration_ms: number
+          horizon_date: string
+          end_condition?: string
+          end_date?: string | null
+          max_count?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          rrule?: string
+          dtstart?: string
+          duration_ms?: number
+          horizon_date?: string
+          end_condition?: string
+          end_date?: string | null
+          max_count?: number | null
+          created_at?: string
           updated_at?: string
         }
         Relationships: []

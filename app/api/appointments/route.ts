@@ -20,6 +20,9 @@ const createAppointmentSchema = z
     notes: z.string().trim().min(1).optional(),
     employee_ids: z.array(z.string().uuid()).optional(),
     recurrence_rule: z.string().trim().min(1).optional(),
+    recurrence_end_condition: z.enum(['until', 'count', 'infinite']).optional().default('infinite'),
+    recurrence_end_date: z.string().datetime({ offset: true }).optional(),
+    recurrence_max_count: z.number().int().min(1).optional(),
     status: statusSchema.optional().default('scheduled'),
     invoice: z
       .object({
@@ -45,6 +48,23 @@ const createAppointmentSchema = z
         message: 'Invalid recurrence rule',
         path: ['recurrence_rule'],
       })
+    }
+
+    if (value.recurrence_rule) {
+      if (value.recurrence_end_condition === 'until' && !value.recurrence_end_date) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'recurrence_end_date is required when recurrence_end_condition is "until"',
+          path: ['recurrence_end_date'],
+        })
+      }
+      if (value.recurrence_end_condition === 'count' && !value.recurrence_max_count) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'recurrence_max_count is required when recurrence_end_condition is "count"',
+          path: ['recurrence_max_count'],
+        })
+      }
     }
 
     if (
@@ -466,7 +486,48 @@ export async function POST(request: Request) {
 
     console.log('Creating recurring appointment series with rule:', input.recurrence_rule)
 
-    const seriesId = crypto.randomUUID()
+    const durationMs = new Date(input.end_time).getTime() - new Date(input.start_time).getTime()
+
+    // Build the RRULE string for COUNT/UNTIL end conditions
+    let effectiveRRule = input.recurrence_rule!
+    if (input.recurrence_end_condition === 'count' && input.recurrence_max_count) {
+      // Append COUNT to the RRULE if not already present
+      if (!effectiveRRule.includes('COUNT=')) {
+        effectiveRRule = effectiveRRule.replace(/;?$/, `;COUNT=${input.recurrence_max_count}`)
+      }
+    } else if (input.recurrence_end_condition === 'until' && input.recurrence_end_date) {
+      if (!effectiveRRule.includes('UNTIL=')) {
+        const untilStr = new Date(input.recurrence_end_date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+        effectiveRRule = effectiveRRule.replace(/;?$/, `;UNTIL=${untilStr}`)
+      }
+    }
+
+    // Insert recurrence_series row first
+    const { data: seriesRow, error: seriesInsertError } = await supabase
+      .from('recurrence_series')
+      .insert({
+        rrule: effectiveRRule,
+        dtstart: input.start_time,
+        duration_ms: durationMs,
+        horizon_date: new Date(new Date(input.start_time).getTime() + 52 * 7 * 24 * 60 * 60 * 1000).toISOString(),
+        end_condition: input.recurrence_end_condition ?? 'infinite',
+        end_date: input.recurrence_end_date ?? null,
+        max_count: input.recurrence_max_count ?? null,
+      } as any)
+      .select('id')
+      .single()
+
+    if (seriesInsertError || !seriesRow) {
+      console.error('Failed to create recurrence_series:', {
+        message: seriesInsertError?.message,
+        code: seriesInsertError?.code,
+        details: seriesInsertError?.details,
+        hint: seriesInsertError?.hint,
+      })
+      return serverError()
+    }
+
+    const seriesId = seriesRow.id
     console.log('Series ID:', seriesId)
 
     const { data: master, error: masterError } = await supabase
@@ -481,7 +542,6 @@ export async function POST(request: Request) {
         notes: input.notes,
         status: input.status,
         recurrence_series_id: seriesId,
-        recurrence_rule: input.recurrence_rule,
         is_master: true,
       })
       .select('*')
@@ -499,6 +559,19 @@ export async function POST(request: Request) {
     }
 
     console.log('Created master appointment:', master.id)
+
+    if (employeeIds.length > 0) {
+      const { error: masterAssignError } = await supabase.from('appointment_employees').insert(
+        employeeIds.map((employeeId) => ({
+          appointment_id: master.id,
+          employee_id: employeeId,
+        })) as any,
+      )
+      if (masterAssignError) {
+        console.error('Failed to assign employees to master appointment:', masterAssignError)
+        return serverError()
+      }
+    }
 
     if (input.invoice) {
       console.log('Creating invoice for master appointment:', master.id)
@@ -526,7 +599,7 @@ export async function POST(request: Request) {
     const instances = materializeRecurrence(
       new Date(input.start_time),
       new Date(input.end_time),
-      input.recurrence_rule,
+      effectiveRRule,
     )
 
     const nonMasterInstances = instances.filter(
@@ -574,6 +647,17 @@ export async function POST(request: Request) {
 
       createdInstances = insertedInstances ?? []
       console.log('Created recurrence instances:', createdInstances.length)
+    }
+
+    // Update horizon_date to the actual last materialized occurrence
+    if (createdInstances.length > 0) {
+      const lastInstance = createdInstances[createdInstances.length - 1]
+      if (lastInstance) {
+        await supabase
+          .from('recurrence_series')
+          .update({ horizon_date: lastInstance.start_time } as any)
+          .eq('id', seriesId)
+      }
     }
 
     if (employeeIds.length > 0 && createdInstances.length > 0) {

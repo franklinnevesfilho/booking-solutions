@@ -89,6 +89,16 @@ export async function getAppointmentWithDetails(
 
   const { clients, homes, jobs: jobRow, status, ...appointmentFields } = appointment
 
+  let recurrenceSeries = null
+  if ((appointmentFields as { recurrence_series_id?: string | null }).recurrence_series_id) {
+    const { data: seriesRow } = await supabase
+      .from('recurrence_series')
+      .select('*')
+      .eq('id', (appointmentFields as { recurrence_series_id: string }).recurrence_series_id)
+      .maybeSingle()
+    recurrenceSeries = seriesRow ?? null
+  }
+
   const { data: invoiceRow, error: invoiceError } = await supabase
     .from('invoices')
     .select('*')
@@ -130,6 +140,7 @@ export async function getAppointmentWithDetails(
   return {
     ...appointmentFields,
     status: status as AppointmentWithDetails['status'],
+    recurrence_series: recurrenceSeries,
     client: clients,
     home: homes,
     job: jobRow ?? null,
@@ -240,7 +251,6 @@ export async function getAppointmentsForUser(
     status: appointment.status as AppointmentWithDetails['status'],
     notes: appointment.notes,
     recurrence_series_id: appointment.recurrence_series_id,
-    recurrence_rule: appointment.recurrence_rule,
     is_master: appointment.is_master,
     created_at: appointment.created_at,
     updated_at: appointment.updated_at,

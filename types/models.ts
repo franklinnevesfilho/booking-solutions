@@ -1,5 +1,6 @@
 export type Role = 'admin' | 'employee'
 export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled'
+export type RecurrenceEndCondition = 'until' | 'count' | 'infinite'
 
 export interface Profile {
   id: string
@@ -57,6 +58,19 @@ export interface Invoice {
   updated_at: string
 }
 
+export interface RecurrenceSeries {
+  id: string
+  rrule: string
+  dtstart: string
+  duration_ms: number
+  horizon_date: string
+  end_condition: RecurrenceEndCondition
+  end_date: string | null
+  max_count: number | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Appointment {
   id: string
   client_id: string | null
@@ -68,7 +82,6 @@ export interface Appointment {
   status: AppointmentStatus
   notes: string | null
   recurrence_series_id: string | null
-  recurrence_rule: string | null
   is_master: boolean
   created_at: string
   updated_at: string

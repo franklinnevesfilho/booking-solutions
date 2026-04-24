@@ -23,7 +23,8 @@ type AppointmentModalProps = {
   defaultEnd?: string
 }
 
-type RepeatType = 'daily' | 'weekly'
+type RepeatType = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom'
+type EndCondition = 'infinite' | 'until' | 'count'
 type EditScope = 'single' | 'series'
 
 type ClientOption = Pick<Client, 'id' | 'full_name'>
@@ -41,7 +42,6 @@ type AppointmentApiShape = {
   status: 'scheduled' | 'completed' | 'cancelled'
   notes: string | null
   recurrence_series_id: string | null
-  recurrence_rule: string | null
   is_master: boolean
   created_at: string
   updated_at: string
@@ -92,8 +92,19 @@ const appointmentSchema = z
     is_paid: z.boolean().default(false),
     status: z.enum(['scheduled', 'completed', 'cancelled']),
     doesRepeat: z.boolean(),
-    repeatType: z.enum(['daily', 'weekly']),
+    repeatType: z.enum(['daily', 'weekly', 'biweekly', 'monthly', 'custom']),
     weeklyDays: z.array(z.number()),
+    repeatInterval: z.preprocess(
+      (v) => (v === '' || v === undefined ? 1 : Number(v)),
+      z.number().int().min(1).default(1),
+    ),
+    repeatFreq: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']).default('WEEKLY'),
+    endCondition: z.enum(['infinite', 'until', 'count']).default('infinite'),
+    endDate: z.string().optional(),
+    endCount: z.preprocess(
+      (v) => (v === '' || v === undefined || v === null ? undefined : Number(v)),
+      z.number().int().min(1).optional(),
+    ),
     editScope: z.enum(['single', 'series']),
   })
   .superRefine((value, ctx) => {
@@ -124,12 +135,37 @@ const appointmentSchema = z
       })
     }
 
-    if (value.doesRepeat && value.repeatType === 'weekly' && value.weeklyDays.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Select at least one day for weekly recurrence',
-        path: ['weeklyDays'],
-      })
+    if (value.doesRepeat) {
+      if (value.repeatType === 'weekly' || value.repeatType === 'biweekly') {
+        if (value.weeklyDays.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Select at least one day',
+            path: ['weeklyDays'],
+          })
+        }
+      }
+      if (value.repeatType === 'custom' && value.repeatFreq === 'WEEKLY' && value.weeklyDays.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Select at least one day',
+          path: ['weeklyDays'],
+        })
+      }
+      if (value.endCondition === 'until' && !value.endDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'End date is required',
+          path: ['endDate'],
+        })
+      }
+      if (value.endCondition === 'count' && !value.endCount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Number of occurrences is required',
+          path: ['endCount'],
+        })
+      }
     }
 
     if (value.discount_amount > 0 && (!value.discount_reason || value.discount_reason.trim() === '')) {
@@ -167,7 +203,6 @@ function toAppointmentWithDetails(row: AppointmentApiShape): AppointmentWithDeta
     status: row.status,
     notes: row.notes,
     recurrence_series_id: row.recurrence_series_id,
-    recurrence_rule: row.recurrence_rule,
     is_master: row.is_master,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -208,6 +243,51 @@ function defaultValuesFromProps(
   defaultEnd?: string,
 ): AppointmentFormValues {
   if (currentAppointment) {
+    // Parse RRULE from recurrence_series if present
+    const rrule = (currentAppointment as { recurrence_series?: { rrule?: string } }).recurrence_series?.rrule ?? ''
+    let parsedRepeatType: RepeatType = 'weekly'
+    let parsedRepeatInterval = 1
+    let parsedRepeatFreq: 'DAILY' | 'WEEKLY' | 'MONTHLY' = 'WEEKLY'
+    let parsedWeeklyDays: number[] = []
+    let parsedEndCondition: EndCondition = 'infinite'
+    let parsedEndDate = ''
+    let parsedEndCount: number | undefined = undefined
+
+    if (rrule) {
+      const freqMatch = rrule.match(/FREQ=(\w+)/)
+      const intervalMatch = rrule.match(/INTERVAL=(\d+)/)
+      const bydayMatch = rrule.match(/BYDAY=([\w,]+)/)
+      const untilMatch = rrule.match(/UNTIL=([\dTZ]+)/)
+      const countMatch = rrule.match(/COUNT=(\d+)/)
+
+      const freq = (freqMatch?.[1] ?? 'WEEKLY') as 'DAILY' | 'WEEKLY' | 'MONTHLY'
+      const interval = parseInt(intervalMatch?.[1] ?? '1', 10)
+      const byday = bydayMatch?.[1]?.split(',') ?? []
+
+      parsedRepeatFreq = freq
+      parsedRepeatInterval = interval
+      parsedWeeklyDays = byday.map((d) => byDayTokens.indexOf(d)).filter((i) => i >= 0)
+
+      if (freq === 'DAILY' && interval === 1) parsedRepeatType = 'daily'
+      else if (freq === 'WEEKLY' && interval === 1) parsedRepeatType = 'weekly'
+      else if (freq === 'WEEKLY' && interval === 2) parsedRepeatType = 'biweekly'
+      else if (freq === 'MONTHLY' && interval === 1) parsedRepeatType = 'monthly'
+      else parsedRepeatType = 'custom'
+
+      if (untilMatch?.[1]) {
+        parsedEndCondition = 'until'
+        // Convert UNTIL YYYYMMDDTHHMMSSZ to datetime-local string
+        const raw = untilMatch[1]
+        const year = raw.slice(0, 4)
+        const month = raw.slice(4, 6)
+        const day = raw.slice(6, 8)
+        parsedEndDate = `${year}-${month}-${day}T00:00`
+      } else if (countMatch?.[1]) {
+        parsedEndCondition = 'count'
+        parsedEndCount = parseInt(countMatch[1], 10)
+      }
+    }
+
     return {
       title: currentAppointment.title,
       job_id: currentAppointment.job_id ?? currentAppointment.job?.id ?? '',
@@ -223,8 +303,13 @@ function defaultValuesFromProps(
       is_paid: currentAppointment.invoice?.is_paid ?? false,
       status: currentAppointment.status,
       doesRepeat: false,
-      repeatType: 'weekly',
-      weeklyDays: [],
+      repeatType: parsedRepeatType,
+      repeatInterval: parsedRepeatInterval,
+      repeatFreq: parsedRepeatFreq,
+      weeklyDays: parsedWeeklyDays,
+      endCondition: parsedEndCondition,
+      endDate: parsedEndDate,
+      endCount: parsedEndCount,
       editScope: 'single',
     }
   }
@@ -250,6 +335,11 @@ function defaultValuesFromProps(
     doesRepeat: false,
     repeatType: 'weekly',
     weeklyDays: [],
+    repeatInterval: 1,
+    repeatFreq: 'WEEKLY',
+    endCondition: 'infinite',
+    endDate: '',
+    endCount: undefined,
     editScope: 'single',
   }
 }
@@ -280,6 +370,7 @@ export function AppointmentModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showDeleteScopePrompt, setShowDeleteScopePrompt] = useState(false)
   const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false)
+  const [showRecurrenceEdit, setShowRecurrenceEdit] = useState(false)
 
   const isEditMode = Boolean(appointment)
   const hasSeries = Boolean(appointment?.recurrence_series_id)
@@ -300,6 +391,12 @@ export function AppointmentModal({
 
   const doesRepeat = watch('doesRepeat')
   const repeatType = watch('repeatType')
+  const repeatInterval = watch('repeatInterval')
+  const repeatFreq = watch('repeatFreq')
+  const endCondition = watch('endCondition')
+  const watchedEndDate = watch('endDate')
+  const watchedEndCount = watch('endCount')
+  const editScope = watch('editScope')
   const selectedEmployeeIds = watch('employee_ids')
   const clientId = watch('client_id')
   const watchedJobId = watch('job_id')
@@ -309,6 +406,26 @@ export function AppointmentModal({
   const watchedEnd = watch('end_time')
   const watchedAmountCharged = watch('amount_charged')
   const watchedDiscountAmount = watch('discount_amount')
+
+  useEffect(() => {
+    if (isEditMode) {
+      return
+    }
+
+    const parsedStart = new Date(watchedStart)
+    if (Number.isNaN(parsedStart.getTime())) {
+      setValue('title', '', { shouldValidate: false, shouldDirty: false })
+      return
+    }
+
+    const month = String(parsedStart.getMonth() + 1).padStart(2, '0')
+    const day = String(parsedStart.getDate()).padStart(2, '0')
+    const dateLabel = `${month}/${day}`
+    const selectedClientName = clients.find((client) => client.id === clientId)?.full_name?.trim()
+    const generatedTitle = selectedClientName ? `${dateLabel} - ${selectedClientName}` : dateLabel
+
+    setValue('title', generatedTitle, { shouldValidate: false, shouldDirty: false })
+  }, [isEditMode, watchedStart, clientId, clients, setValue])
 
   const weeklyDayError = errors.weeklyDays?.message
 
@@ -322,6 +439,147 @@ export function AppointmentModal({
     { label: t('weekdaySun'), value: 6 },
   ]
 
+  const recurrenceSection = (
+    <div className="space-y-3">
+      {/* Frequency selector */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Frequency</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {([
+            { value: 'daily', label: t('daily') },
+            { value: 'weekly', label: t('weekly') },
+            { value: 'biweekly', label: 'Biweekly' },
+            { value: 'monthly', label: 'Monthly' },
+            { value: 'custom', label: 'Custom' },
+          ] as const).map(({ value, label }) => (
+            <label
+              key={value}
+              className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 cursor-pointer"
+            >
+              <input
+                type="radio"
+                value={value}
+                checked={repeatType === value}
+                onChange={() => setValue('repeatType', value, { shouldValidate: true })}
+                className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom interval inputs */}
+      {repeatType === 'custom' ? (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-700 whitespace-nowrap">Every</span>
+          <input
+            type="number"
+            min={1}
+            className="h-11 w-20 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            {...register('repeatInterval')}
+          />
+          <select
+            className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            value={repeatFreq}
+            onChange={(e) => setValue('repeatFreq', e.target.value as 'DAILY' | 'WEEKLY' | 'MONTHLY', { shouldValidate: true })}
+          >
+            <option value="DAILY">days</option>
+            <option value="WEEKLY">weeks</option>
+            <option value="MONTHLY">months</option>
+          </select>
+        </div>
+      ) : null}
+
+      {/* Weekday selector for weekly/biweekly/custom-weekly */}
+      {(repeatType === 'weekly' || repeatType === 'biweekly' || (repeatType === 'custom' && repeatFreq === 'WEEKLY')) ? (
+        <div>
+          <p className="mb-2 text-sm font-medium text-slate-700">{t('repeatOnDays')}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {weekdayLabels.map((weekday) => {
+              const checked = watch('weeklyDays').includes(weekday.value)
+              return (
+                <label
+                  key={weekday.value}
+                  className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => handleWeekdayToggle(weekday.value, e.target.checked)}
+                    className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  {weekday.label}
+                </label>
+              )
+            })}
+          </div>
+          {weeklyDayError ? <p className="mt-1.5 text-sm text-rose-600">{weeklyDayError}</p> : null}
+        </div>
+      ) : null}
+
+      {/* End condition */}
+      <div>
+        <p className="mb-2 text-sm font-medium text-slate-700">Ends</p>
+        <div className="space-y-2">
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="radio"
+              value="infinite"
+              checked={endCondition === 'infinite'}
+              onChange={() => setValue('endCondition', 'infinite', { shouldValidate: true })}
+              className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            No end date
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="radio"
+              value="until"
+              checked={endCondition === 'until'}
+              onChange={() => setValue('endCondition', 'until', { shouldValidate: true })}
+              className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            End by date
+          </label>
+          {endCondition === 'until' ? (
+            <div className="ml-7">
+              <input
+                type="date"
+                className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                {...register('endDate')}
+              />
+              {errors.endDate ? <p className="mt-1.5 text-sm text-rose-600">{errors.endDate.message}</p> : null}
+            </div>
+          ) : null}
+          <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input
+              type="radio"
+              value="count"
+              checked={endCondition === 'count'}
+              onChange={() => setValue('endCondition', 'count', { shouldValidate: true })}
+              className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            End after
+          </label>
+          {endCondition === 'count' ? (
+            <div className="ml-7 flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                className="h-11 w-24 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                placeholder="N"
+                {...register('endCount')}
+              />
+              <span className="text-sm text-slate-700">occurrences</span>
+              {errors.endCount ? <p className="mt-1.5 text-sm text-rose-600">{errors.endCount.message}</p> : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+
   useEffect(() => {
     console.log('[AppointmentModal] reset', {
       invoiceAmountCharged: appointment?.invoice?.amount_charged,
@@ -334,6 +592,7 @@ export function AppointmentModal({
     setHomes([])
     setErrorMessage(null)
     setShowDeleteScopePrompt(false)
+    setShowRecurrenceEdit(false)
   }, [appointment, defaultStart, defaultEnd, reset, isOpen])
 
   useEffect(() => {
@@ -598,12 +857,84 @@ export function AppointmentModal({
       if (isEditMode) {
         payload.status = values.status
         payload.edit_scope = hasSeries ? values.editScope : 'single'
+
+        // Include recurrence rule mutation when editing series with recurrence edit open
+        if (hasSeries && values.editScope === 'series' && showRecurrenceEdit) {
+          let rrule: string
+          switch (values.repeatType) {
+            case 'daily':
+              rrule = 'FREQ=DAILY;INTERVAL=1'
+              break
+            case 'weekly': {
+              const byDays = values.weeklyDays.map((day) => byDayTokens[day]).join(',')
+              rrule = `FREQ=WEEKLY;INTERVAL=1;BYDAY=${byDays}`
+              break
+            }
+            case 'biweekly': {
+              const byDays = values.weeklyDays.map((day) => byDayTokens[day]).join(',')
+              rrule = `FREQ=WEEKLY;INTERVAL=2;BYDAY=${byDays}`
+              break
+            }
+            case 'monthly':
+              rrule = `FREQ=MONTHLY;INTERVAL=1`
+              break
+            case 'custom':
+            default: {
+              let customRRule = `FREQ=${values.repeatFreq};INTERVAL=${values.repeatInterval}`
+              if (values.repeatFreq === 'WEEKLY' && values.weeklyDays.length > 0) {
+                const byDays = values.weeklyDays.map((day) => byDayTokens[day]).join(',')
+                customRRule += `;BYDAY=${byDays}`
+              }
+              rrule = customRRule
+              break
+            }
+          }
+          payload.recurrence_rule = rrule
+          payload.recurrence_end_condition = values.endCondition
+          if (values.endCondition === 'until' && values.endDate) {
+            payload.recurrence_end_date = new Date(values.endDate).toISOString()
+          }
+          if (values.endCondition === 'count' && values.endCount) {
+            payload.recurrence_max_count = values.endCount
+          }
+        }
       } else if (values.doesRepeat) {
-        if (values.repeatType === 'daily') {
-          payload.recurrence_rule = 'FREQ=DAILY;INTERVAL=1'
-        } else {
-          const byDays = values.weeklyDays.map((day) => byDayTokens[day]).join(',')
-          payload.recurrence_rule = `FREQ=WEEKLY;INTERVAL=1;BYDAY=${byDays}`
+        let rrule: string
+        switch (values.repeatType) {
+          case 'daily':
+            rrule = 'FREQ=DAILY;INTERVAL=1'
+            break
+          case 'weekly': {
+            const byDays = values.weeklyDays.map((day) => byDayTokens[day]).join(',')
+            rrule = `FREQ=WEEKLY;INTERVAL=1;BYDAY=${byDays}`
+            break
+          }
+          case 'biweekly': {
+            const byDays = values.weeklyDays.map((day) => byDayTokens[day]).join(',')
+            rrule = `FREQ=WEEKLY;INTERVAL=2;BYDAY=${byDays}`
+            break
+          }
+          case 'monthly':
+            rrule = `FREQ=MONTHLY;INTERVAL=1`
+            break
+          case 'custom':
+          default: {
+            let customRRule = `FREQ=${values.repeatFreq};INTERVAL=${values.repeatInterval}`
+            if (values.repeatFreq === 'WEEKLY' && values.weeklyDays.length > 0) {
+              const byDays = values.weeklyDays.map((day) => byDayTokens[day]).join(',')
+              customRRule += `;BYDAY=${byDays}`
+            }
+            rrule = customRRule
+            break
+          }
+        }
+        payload.recurrence_rule = rrule
+        payload.recurrence_end_condition = values.endCondition
+        if (values.endCondition === 'until' && values.endDate) {
+          payload.recurrence_end_date = new Date(values.endDate).toISOString()
+        }
+        if (values.endCondition === 'count' && values.endCount) {
+          payload.recurrence_max_count = values.endCount
         }
       }
 
@@ -651,10 +982,33 @@ export function AppointmentModal({
       const query = scope === 'series' ? '?scope=series' : ''
       const response = await fetch(`/api/appointments/${appointment.id}${query}`, {
         method: 'DELETE',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+        },
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete appointment')
+        const responseText = await response.text()
+        let responseBody: unknown = responseText
+
+        if (responseText) {
+          try {
+            responseBody = JSON.parse(responseText)
+          } catch {
+            responseBody = responseText
+          }
+        }
+
+        console.error('Delete appointment request failed', {
+          appointmentId: appointment.id,
+          scope,
+          status: response.status,
+          statusText: response.statusText,
+          responseBody,
+        })
+
+        throw new Error(`Failed to delete appointment (${response.status})`)
       }
 
       onDeleted?.(appointment.id)
@@ -713,7 +1067,9 @@ export function AppointmentModal({
               </div>
             ) : (
               <>
-                <Input label={t('titleLabel')} placeholder={t('titlePlaceholder')} error={errors.title?.message} {...register('title')} />
+                {isEditMode ? (
+                  <Input label={t('titleLabel')} placeholder={t('titlePlaceholder')} error={errors.title?.message} {...register('title')} />
+                ) : null}
 
             <div>
               <label htmlFor="job_id" className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -892,55 +1248,7 @@ export function AppointmentModal({
 
                 {doesRepeat ? (
                   <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                      <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
-                        <input
-                          type="radio"
-                          value="daily"
-                          checked={repeatType === 'daily'}
-                          onChange={() => setValue('repeatType', 'daily', { shouldValidate: true })}
-                          className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
-                        />
-                        {t('daily')}
-                      </label>
-                      <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
-                        <input
-                          type="radio"
-                          value="weekly"
-                          checked={repeatType === 'weekly'}
-                          onChange={() => setValue('repeatType', 'weekly', { shouldValidate: true })}
-                          className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
-                        />
-                        {t('weekly')}
-                      </label>
-                    </div>
-
-                    {repeatType === 'weekly' ? (
-                      <div>
-                        <p className="mb-2 text-sm font-medium text-slate-700">{t('repeatOnDays')}</p>
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          {weekdayLabels.map((weekday) => {
-                            const checked = watch('weeklyDays').includes(weekday.value)
-
-                            return (
-                              <label
-                                key={weekday.value}
-                                className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={(event) => handleWeekdayToggle(weekday.value, event.target.checked)}
-                                  className="h-5 w-5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                                />
-                                {weekday.label}
-                              </label>
-                            )
-                          })}
-                        </div>
-                        {weeklyDayError ? <p className="mt-1.5 text-sm text-rose-600">{weeklyDayError}</p> : null}
-                      </div>
-                    ) : null}
+                    {recurrenceSection}
                   </div>
                 ) : null}
               </div>
@@ -1032,7 +1340,7 @@ export function AppointmentModal({
                     <input
                       type="radio"
                       value="single"
-                      checked={watch('editScope') === 'single'}
+                      checked={editScope === 'single'}
                       onChange={() => setValue('editScope', 'single')}
                       className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
                     />
@@ -1042,7 +1350,7 @@ export function AppointmentModal({
                     <input
                       type="radio"
                       value="series"
-                      checked={watch('editScope') === 'series'}
+                      checked={editScope === 'series'}
                       onChange={() => setValue('editScope', 'series')}
                       className="h-5 w-5 border-slate-300 text-brand-600 focus:ring-brand-500"
                     />
@@ -1050,6 +1358,30 @@ export function AppointmentModal({
                   </label>
                 </div>
               </fieldset>
+            ) : null}
+
+            {isEditMode && hasSeries && editScope === 'series' ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center justify-between text-left text-sm font-semibold text-amber-900"
+                  onClick={() => setShowRecurrenceEdit((prev) => !prev)}
+                  aria-expanded={showRecurrenceEdit}
+                >
+                  <span>Change recurrence rule</span>
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d={showRecurrenceEdit ? 'M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z' : 'M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z'} clipRule="evenodd" />
+                  </svg>
+                </button>
+                {showRecurrenceEdit ? (
+                  <div className="mt-3 space-y-3 border-t border-amber-200 pt-3">
+                    <p className="text-xs text-amber-800">
+                      Changing the recurrence rule will delete all future occurrences and recreate them from today. Past occurrences are preserved.
+                    </p>
+                    {recurrenceSection}
+                  </div>
+                ) : null}
+              </div>
             ) : null}
 
             {showDeleteScopePrompt ? (

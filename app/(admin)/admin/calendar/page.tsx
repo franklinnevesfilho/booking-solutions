@@ -15,7 +15,6 @@ type AppointmentRow = {
   status: 'scheduled' | 'completed' | 'cancelled'
   notes: string | null
   recurrence_series_id: string | null
-  recurrence_rule: string | null
   is_master: boolean
   job_id: string | null
   created_at: string
@@ -121,7 +120,6 @@ export default async function AdminCalendarPage() {
     status: appointment.status,
     notes: appointment.notes,
     recurrence_series_id: appointment.recurrence_series_id,
-    recurrence_rule: appointment.recurrence_rule,
     is_master: appointment.is_master,
     created_at: appointment.created_at,
     updated_at: appointment.updated_at,

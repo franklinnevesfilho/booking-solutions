@@ -5,6 +5,7 @@ import {
   getSeriesNotificationAppointment,
 } from '@/lib/api/appointments'
 import { badRequest, forbidden, getSessionAndRole, notFound, serverError } from '@/lib/api/auth'
+import { getFutureOccurrencesFrom, isValidRRule } from '@/lib/calendar/recurrence'
 import { notifyAppointmentCancelled, notifyAppointmentUpdated } from '@/lib/email/notifications'
 import { createClient } from '@/lib/supabase/server'
 import type { ClientHome, Database } from '@/types'
@@ -23,6 +24,10 @@ const updateAppointmentSchema = z
     status: statusSchema.optional(),
     employee_ids: z.array(z.string().uuid()).optional(),
     edit_scope: z.enum(['single', 'series']).optional(),
+    recurrence_rule: z.string().trim().min(1).optional(),
+    recurrence_end_condition: z.enum(['until', 'count', 'infinite']).optional(),
+    recurrence_end_date: z.string().datetime({ offset: true }).optional().nullable(),
+    recurrence_max_count: z.number().int().min(1).optional().nullable(),
     invoice: z
       .object({
         amount_charged: z.number().positive(),
@@ -52,6 +57,21 @@ const updateAppointmentSchema = z
         code: z.ZodIssueCode.custom,
         message: 'discount_reason is required when discount_amount is greater than 0',
         path: ['invoice', 'discount_reason'],
+      })
+    }
+
+    if (value.recurrence_rule && !isValidRRule(value.recurrence_rule)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid recurrence rule',
+        path: ['recurrence_rule'],
+      })
+    }
+    if (value.recurrence_rule && value.edit_scope !== 'series') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'recurrence_rule can only be updated with edit_scope "series"',
+        path: ['recurrence_rule'],
       })
     }
   })
@@ -259,8 +279,17 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return validationError(parsed)
   }
 
-  const { employee_ids: employeeIds, edit_scope: editScope, invoice: invoiceInput, ...fields } = parsed.data
-  const hasMeaningfulUpdate = Object.keys(fields).length > 0 || employeeIds !== undefined
+  const {
+    employee_ids: employeeIds,
+    edit_scope: editScope,
+    invoice: invoiceInput,
+    recurrence_rule: newRRule,
+    recurrence_end_condition: newEndCondition,
+    recurrence_end_date: newEndDate,
+    recurrence_max_count: newMaxCount,
+    ...fields
+  } = parsed.data
+  const hasMeaningfulUpdate = Object.keys(fields).length > 0 || employeeIds !== undefined || Boolean(newRRule)
 
   if (!hasMeaningfulUpdate) {
     console.warn('No fields to update — id:', id)
@@ -338,96 +367,262 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (scope === 'series' && base.recurrence_series_id) {
       console.log('Updating appointment series — seriesId:', base.recurrence_series_id)
 
-      const {
-        start_time: ignoredStart,
-        end_time: ignoredEnd,
-        ...seriesUpdatableFields
-      } = fields
+      // Handle rule mutation: delete future instances and rematerialize
+      if (newRRule) {
+        console.log('Rule mutation requested — new RRULE:', newRRule)
 
-      void ignoredStart
-      void ignoredEnd
+        // Load current series metadata
+        const { data: seriesData, error: seriesLoadError } = await supabase
+          .from('recurrence_series')
+          .select('*')
+          .eq('id', base.recurrence_series_id)
+          .single()
 
-      if (Object.keys(seriesUpdatableFields).length > 0) {
-        console.log('Applying series field updates:', seriesUpdatableFields)
-
-        const { error: updateError } = await (supabase.from('appointments') as any)
-          .update(seriesUpdatableFields)
-          .eq('recurrence_series_id', base.recurrence_series_id)
-
-        if (updateError) {
-          console.error('Failed to update appointment series:', {
-            message: updateError.message,
-            code: updateError.code,
-            details: updateError.details,
-            hint: updateError.hint,
-            seriesId: base.recurrence_series_id,
-            fields: seriesUpdatableFields,
-          })
+        if (seriesLoadError || !seriesData) {
+          console.error('Failed to load recurrence_series for mutation:', seriesLoadError)
           return serverError()
         }
-      }
 
-      const { data: seriesAppointments, error: seriesError } = await supabase
-        .from('appointments')
-        .select('id')
-        .eq('recurrence_series_id', base.recurrence_series_id)
+        // Determine new time slot
+        const newDtstart = fields.start_time ?? seriesData.dtstart
+        const newDurationMs = fields.start_time && fields.end_time
+          ? new Date(fields.end_time).getTime() - new Date(fields.start_time).getTime()
+          : Number(seriesData.duration_ms)
 
-      if (seriesError) {
-        console.error('Failed to fetch series appointments after update:', {
-          message: seriesError.message,
-          code: seriesError.code,
-          details: seriesError.details,
-          hint: seriesError.hint,
-          seriesId: base.recurrence_series_id,
-        })
-        return serverError()
-      }
+        // Validate: ensure new rule produces at least one future occurrence
+        const now = new Date()
+        const futureOccurrences = getFutureOccurrencesFrom(
+          newRRule,
+          new Date(newDtstart),
+          newDurationMs,
+          now,
+          8,
+        )
 
-      const seriesIds = ((seriesAppointments ?? []) as unknown as Array<{ id: string }>).map((row) => row.id)
-      console.log('Series appointment IDs:', seriesIds.length)
+        if (futureOccurrences.length === 0) {
+          return badRequest('The new recurrence rule produces no future occurrences')
+        }
 
-      if (employeeIds) {
-        console.log('Updating employee assignments for series:', { seriesId: base.recurrence_series_id, employeeIds })
+        // Update recurrence_series
+        const seriesUpdate: Record<string, unknown> = { rrule: newRRule }
+        if (fields.start_time) seriesUpdate.dtstart = fields.start_time
+        if (newDurationMs !== Number(seriesData.duration_ms)) seriesUpdate.duration_ms = newDurationMs
+        if (newEndCondition) seriesUpdate.end_condition = newEndCondition
+        if (newEndDate !== undefined) seriesUpdate.end_date = newEndDate
+        if (newMaxCount !== undefined) seriesUpdate.max_count = newMaxCount
 
-        const { error: deleteAssignmentsError } = await supabase
-          .from('appointment_employees')
+        const { error: seriesUpdateError } = await supabase
+          .from('recurrence_series')
+          .update(seriesUpdate as any)
+          .eq('id', base.recurrence_series_id)
+
+        if (seriesUpdateError) {
+          console.error('Failed to update recurrence_series:', seriesUpdateError)
+          return serverError()
+        }
+
+        // Delete all future non-master instances
+        const { error: deleteFutureError } = await supabase
+          .from('appointments')
           .delete()
-          .in('appointment_id', seriesIds)
+          .eq('recurrence_series_id', base.recurrence_series_id)
+          .eq('is_master', false)
+          .gte('start_time', now.toISOString())
 
-        if (deleteAssignmentsError) {
-          console.error('Failed to clear series assignments:', {
-            message: deleteAssignmentsError.message,
-            code: deleteAssignmentsError.code,
-            details: deleteAssignmentsError.details,
-            hint: deleteAssignmentsError.hint,
-            seriesId: base.recurrence_series_id,
-          })
+        if (deleteFutureError) {
+          console.error('Failed to delete future instances for rule mutation:', deleteFutureError)
           return serverError()
         }
 
-        if (employeeIds.length > 0) {
-          // Assignment accepts any valid profiles.id (admin or employee).
-          const assignmentRows = seriesIds.flatMap((appointmentId) =>
-            employeeIds.map((employeeId) => ({
-              appointment_id: appointmentId,
-              employee_id: employeeId,
-            })),
-          )
+        // Rematerialize from now using new rule
+        const newInstances = getFutureOccurrencesFrom(
+          newRRule,
+          new Date(newDtstart),
+          newDurationMs,
+          now,
+          52,
+        )
 
-          const { error: insertAssignmentsError } = await supabase
+        // Get master appointment for metadata
+        const { data: masterRows } = await supabase
+          .from('appointments')
+          .select('id, title, client_id, home_id, job_id, notes, status')
+          .eq('recurrence_series_id', base.recurrence_series_id)
+          .eq('is_master', true)
+          .limit(1)
+
+        const masterAppt = masterRows?.[0]
+
+        if (masterAppt && newInstances.length > 0) {
+          // Get master employee assignments
+          const { data: masterAssignments } = await supabase
             .from('appointment_employees')
-            .insert(assignmentRows as any)
+            .select('employee_id')
+            .eq('appointment_id', masterAppt.id)
 
-          if (insertAssignmentsError) {
-            console.error('Failed to insert series assignments:', {
-              message: insertAssignmentsError.message,
-              code: insertAssignmentsError.code,
-              details: insertAssignmentsError.details,
-              hint: insertAssignmentsError.hint,
+          const masterEmployeeIds = (masterAssignments ?? []).map((row: { employee_id: string }) => row.employee_id)
+
+          // Also apply any employee_ids override from this request
+          const effectiveEmployeeIds = employeeIds !== undefined ? employeeIds : masterEmployeeIds
+
+          const newApptRows = newInstances.map((instance) => ({
+            title: (fields as Record<string, unknown>).title as string ?? masterAppt.title,
+            client_id: (fields as Record<string, unknown>).client_id as string | null ?? masterAppt.client_id,
+            home_id: (fields as Record<string, unknown>).home_id as string | null ?? masterAppt.home_id,
+            job_id: (fields as Record<string, unknown>).job_id as string | null ?? masterAppt.job_id,
+            notes: (fields as Record<string, unknown>).notes as string | null ?? masterAppt.notes,
+            status: 'scheduled' as const,
+            start_time: instance.start_time.toISOString(),
+            end_time: instance.end_time.toISOString(),
+            recurrence_series_id: base.recurrence_series_id,
+            is_master: false,
+          }))
+
+          const { data: insertedNewRows, error: insertNewError } = await supabase
+            .from('appointments')
+            .insert(newApptRows as any)
+            .select('id')
+
+          if (insertNewError) {
+            console.error('Failed to insert rematerialized instances:', insertNewError)
+            return serverError()
+          }
+
+          if (effectiveEmployeeIds.length > 0 && insertedNewRows && insertedNewRows.length > 0) {
+            const newAssignmentRows = insertedNewRows.flatMap((row: { id: string }) =>
+              effectiveEmployeeIds.map((empId: string) => ({
+                appointment_id: row.id,
+                employee_id: empId,
+              }))
+            )
+            const { error: assignError } = await supabase
+              .from('appointment_employees')
+              .insert(newAssignmentRows as any)
+            if (assignError) {
+              console.error('Failed to assign employees to rematerialized instances:', assignError)
+            }
+          }
+
+          // Update horizon_date
+          const lastInstance = newInstances[newInstances.length - 1]
+          if (lastInstance) {
+            await supabase
+              .from('recurrence_series')
+              .update({ horizon_date: lastInstance.start_time.toISOString() } as any)
+              .eq('id', base.recurrence_series_id)
+          }
+        }
+
+        // Also update the master appointment with any non-time field changes and employee override
+        const masterFieldUpdate: Record<string, unknown> = {}
+        const { start_time: _st, end_time: _et, ...nonTimeFields } = fields as Record<string, unknown>
+        void _st
+        void _et
+        Object.assign(masterFieldUpdate, nonTimeFields)
+
+        if (Object.keys(masterFieldUpdate).length > 0 && masterAppt) {
+          await supabase.from('appointments').update(masterFieldUpdate as any).eq('id', masterAppt.id)
+        }
+
+        if (employeeIds !== undefined && masterAppt) {
+          await supabase.from('appointment_employees').delete().eq('appointment_id', masterAppt.id)
+          if (employeeIds.length > 0) {
+            await supabase.from('appointment_employees').insert(
+              employeeIds.map((empId: string) => ({ appointment_id: masterAppt.id, employee_id: empId })) as any
+            )
+          }
+        }
+      } else {
+        // Non-rule series edit: existing behavior (ignore start_time/end_time, update other fields)
+        const {
+          start_time: _ignoredStart,
+          end_time: _ignoredEnd,
+          ...seriesUpdatableFields
+        } = fields as Record<string, unknown>
+        void _ignoredStart
+        void _ignoredEnd
+
+        if (Object.keys(seriesUpdatableFields).length > 0) {
+          console.log('Applying series field updates:', seriesUpdatableFields)
+
+          const { error: updateError } = await (supabase.from('appointments') as any)
+            .update(seriesUpdatableFields)
+            .eq('recurrence_series_id', base.recurrence_series_id)
+
+          if (updateError) {
+            console.error('Failed to update appointment series:', {
+              message: updateError.message,
+              code: updateError.code,
+              details: updateError.details,
+              hint: updateError.hint,
               seriesId: base.recurrence_series_id,
-              employeeIds,
+              fields: seriesUpdatableFields,
             })
             return serverError()
+          }
+        }
+
+        const { data: seriesAppointments, error: seriesError } = await supabase
+          .from('appointments')
+          .select('id')
+          .eq('recurrence_series_id', base.recurrence_series_id)
+
+        if (seriesError) {
+          console.error('Failed to fetch series appointments after update:', {
+            message: seriesError.message,
+            code: seriesError.code,
+            details: seriesError.details,
+            hint: seriesError.hint,
+            seriesId: base.recurrence_series_id,
+          })
+          return serverError()
+        }
+
+        const seriesIds = ((seriesAppointments ?? []) as unknown as Array<{ id: string }>).map((row) => row.id)
+        console.log('Series appointment IDs:', seriesIds.length)
+
+        if (employeeIds) {
+          console.log('Updating employee assignments for series:', { seriesId: base.recurrence_series_id, employeeIds })
+
+          const { error: deleteAssignmentsError } = await supabase
+            .from('appointment_employees')
+            .delete()
+            .in('appointment_id', seriesIds)
+
+          if (deleteAssignmentsError) {
+            console.error('Failed to clear series assignments:', {
+              message: deleteAssignmentsError.message,
+              code: deleteAssignmentsError.code,
+              details: deleteAssignmentsError.details,
+              hint: deleteAssignmentsError.hint,
+              seriesId: base.recurrence_series_id,
+            })
+            return serverError()
+          }
+
+          if (employeeIds.length > 0) {
+            const assignmentRows = seriesIds.flatMap((appointmentId) =>
+              employeeIds.map((employeeId) => ({
+                appointment_id: appointmentId,
+                employee_id: employeeId,
+              })),
+            )
+
+            const { error: insertAssignmentsError } = await supabase
+              .from('appointment_employees')
+              .insert(assignmentRows as any)
+
+            if (insertAssignmentsError) {
+              console.error('Failed to insert series assignments:', {
+                message: insertAssignmentsError.message,
+                code: insertAssignmentsError.code,
+                details: insertAssignmentsError.details,
+                hint: insertAssignmentsError.hint,
+                seriesId: base.recurrence_series_id,
+                employeeIds,
+              })
+              return serverError()
+            }
           }
         }
       }
@@ -679,25 +874,71 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     if (scope === 'series' && deleteBase.recurrence_series_id) {
       console.log('Deleting appointment series — seriesId:', deleteBase.recurrence_series_id)
 
-      const seriesNotificationAppointment = await getSeriesNotificationAppointment(
-        supabase,
-        deleteBase.recurrence_series_id,
-      )
+      let seriesNotificationAppointment: Awaited<ReturnType<typeof getSeriesNotificationAppointment>> = null
 
-      const { error } = await supabase
-        .from('appointments')
-        .delete()
-        .eq('recurrence_series_id', deleteBase.recurrence_series_id)
-
-      if (error) {
-        console.error('Failed to delete appointment series:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
+      try {
+        seriesNotificationAppointment = await getSeriesNotificationAppointment(
+          supabase,
+          deleteBase.recurrence_series_id,
+        )
+      } catch (error) {
+        console.warn('Failed to load series notification appointment; continuing delete:', {
           seriesId: deleteBase.recurrence_series_id,
+          error,
         })
-        return serverError()
+      }
+
+      const { error: deleteSeriesError } = await supabase
+        .from('recurrence_series')
+        .delete()
+        .eq('id', deleteBase.recurrence_series_id)
+
+      if (deleteSeriesError) {
+        console.warn('Falling back to direct appointment deletion for series:', {
+          seriesId: deleteBase.recurrence_series_id,
+          deleteSeriesError: deleteSeriesError
+            ? {
+                message: deleteSeriesError.message,
+                code: deleteSeriesError.code,
+                details: deleteSeriesError.details,
+                hint: deleteSeriesError.hint,
+              }
+            : null,
+        })
+
+        const { data: deletedAppointments, error: deleteAppointmentsError } = await supabase
+          .from('appointments')
+          .delete()
+          .eq('recurrence_series_id', deleteBase.recurrence_series_id)
+          .select('id')
+
+        if (deleteAppointmentsError) {
+          console.error('Failed to delete appointment series:', {
+            recurrenceSeriesError: deleteSeriesError
+              ? {
+                  message: deleteSeriesError.message,
+                  code: deleteSeriesError.code,
+                  details: deleteSeriesError.details,
+                  hint: deleteSeriesError.hint,
+                }
+              : null,
+            appointmentsError: {
+              message: deleteAppointmentsError.message,
+              code: deleteAppointmentsError.code,
+              details: deleteAppointmentsError.details,
+              hint: deleteAppointmentsError.hint,
+            },
+            seriesId: deleteBase.recurrence_series_id,
+          })
+          return serverError()
+        }
+
+        if ((deletedAppointments?.length ?? 0) === 0) {
+          console.warn('No appointment rows deleted for recurrence series:', {
+            seriesId: deleteBase.recurrence_series_id,
+          })
+          return notFound()
+        }
       }
 
       if (seriesNotificationAppointment) {
@@ -711,7 +952,16 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
     console.log('Deleting single appointment:', id)
 
-    const appointmentWithDetails = await getAppointmentWithDetails(supabase, id)
+    let appointmentWithDetails: Awaited<ReturnType<typeof getAppointmentWithDetails>> = null
+
+    try {
+      appointmentWithDetails = await getAppointmentWithDetails(supabase, id)
+    } catch (error) {
+      console.warn('Failed to load appointment details; continuing delete:', {
+        appointmentId: id,
+        error,
+      })
+    }
 
     const { error } = await supabase.from('appointments').delete().eq('id', id)
 
